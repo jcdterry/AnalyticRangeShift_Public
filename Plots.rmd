@@ -1,0 +1,424 @@
+---
+title: "3. Plots"
+author: "Chris Terry"
+date: "28/01/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message = FALSE,  warning = FALSE}
+library(tidyverse)
+library(lme4)
+library(cowplot)
+library(ggraph)
+library(tidygraph)
+library(igraph)
+```
+
+# Loading and unpacking results outputs 
+
+Saved as a list of dataframes
+
+```{r}
+load( 'Outputs/Lags' )
+load( 'Outputs/CritCC')
+
+ParamDF_NC <- read_csv('Outputs/ParamDF_NC.csv')
+
+Lags%>%
+  map('result')%>%
+  compact %>%
+  map_df(~.) %>%
+  left_join(ParamDF_NC, by = "RunID")->Lags_Results
+
+CritCC%>%
+  map('result')%>%
+  compact %>%
+  map_df(~.) %>%
+  left_join(ParamDF_NC, by = "RunID")-> CritCC_DF
+
+```
+
+# Critical CC Values
+
+```{r fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+### NB Joining the two df of Critical CC Values together
+
+CritCC_DF %>%
+ mutate(FracExtant1 = NumberNowExtant_1  /NumberFocalStart ,
+        FracExtant001 = NumberNowExtant_0.01  /NumberFocalStart) -> AllCritCC_df
+
+AllCritCC_df%>%
+  ggplot( aes( col = factor(EPC_MorseA)  , 
+               y = FracExtant1, x =CC_rate  ))+
+  geom_point()+
+  scale_color_viridis_d()+
+  facet_grid(TempNoise~mRate, labeller = label_both)+
+  geom_smooth(se=FALSE, method = 'glm' , 
+              method.args=list(family="binomial"))+
+  ggtitle( 'Across all movement rates')
+
+```
+
+## CC critical speed stats
+
+```{r}
+JustSlowData <- filter( AllCritCC_df, mRate == 1e-07)
+
+Full_RE <- glmer( data = JustSlowData, family = 'binomial',  weights = NumberFocalStart  ,
+                  FracExtant1 ~   CC_rate*factor(EPC_MorseA)  + (1|RunID  ) ) 
+
+summary(Full_RE)
+
+## shifts 50% extinction rate point by :
+Coefficents<-summary(Full_RE)$coef[,1]
+
+#Prediction for unscaled y = 0 (frac extinct prob =0.5)
+
+## With asym = -1:
+
+## 0 = intercept - CC_rate C*
+##   C* = - intercept / CC_Rate
+(-Coefficents[1] )/ Coefficents[2]
+
+## With asym = 1:
+## 0 = intercept + CC_rate C*   + Assym + CC_rate x interaction x C*
+##   C* = - (intercept+ Assym) / (CC_Rate + interaction)  )
+(-(Coefficents[1] + Coefficents[3] ))/ (Coefficents[2]+ Coefficents[4])
+
+```
+
+# Lags
+
+```{r echo=FALSE}
+Lags_Results %>%
+  ggplot(aes( x = SpMeanLag , col = factor(EPC_MorseA)))+
+  geom_density( )+
+  scale_colour_viridis_d()+
+  facet_grid(TempNoise  ~ mRate , 
+             labeller = label_both)+
+  ggtitle( 'Effect of Assymetry direction')
+
+
+Single_Lags_Full <- lmer( data = Lags_Results,
+                           SpMeanLag  ~ factor(EPC_MorseA)* log10(mRate) + (1|RunID))
+
+summary(Single_Lags_Full)
+
+
+Single_Lags <- lmer( data = filter( Lags_Results, mRate == 1e-07),
+                     SpMeanLag  ~ factor(EPC_MorseA)+ (1|RunID))
+
+summary(Single_Lags)
+
+
+filter( Lags_Results, mRate == 1e-07) %>%
+group_by(EPC_MorseA) %>%
+    summarise( mean(SpMeanLag, na.rm=TRUE ))
+
+```
+
+# Combined plot for paper
+
+### demonstration plot
+
+```{r}
+## Load spoPool from previously generated assembly
+
+load('AssemblyExample/sppPool_ID_1')
+
+## Use function 
+
+source( 'FunctionScripts/R functions_discete.R')
+
+
+EdgeList<-as_tbl_graph(graph_from_adjacency_matrix(sppPool$topo$adjMat,
+                                                   diag = FALSE, mode = 'undirected'))
+
+EdgeList %>%
+  activate(nodes) %>%
+  mutate( Node_X = sppPool$network[,1], 
+          Node_Y = sppPool$network[,2],
+          Env = as.vector(sppPool$envMat),
+          SpeciesDensity = log10(sppPool$bMat_p[1,])) -> GraphObject
+
+Curve <- data.frame( Env = seq(10, 40, l = 1000),
+            Response = CalcR_Morse( seq(10, 40, l = 1000),
+                                    opt = sppPool$tVec[1], 1, -1, 10, -100 )) %>%
+  filter( Response>0.1) %>%
+  mutate( ScaleResponse = (Response /3)+11 )
+
+GraphObject %>%
+  ggraph(layout = data.frame(x=sppPool$network[,1],
+                             y=sppPool$network[,2])) + 
+  geom_edge_link() + 
+  geom_node_point(aes(fill = Env), size = 4, shape = 21)+
+  geom_node_point(aes(size = SpeciesDensity), shape = 23,
+                  fill = 'yellow', alpha = 0.5)+
+  coord_fixed()+
+  scale_fill_gradient2(low = 'blue1',midpoint = 20, 
+                       mid = 'beige', high = 'tomato3')+
+  #scale_fill_viridis_c( ) +
+  theme(rect = element_blank())+
+  geom_line( data = Curve, aes( x = Env, y = ScaleResponse), size = 2)+
+  guides( size = FALSE, fill = FALSE)+
+  annotate("segment", x = 20, xend = 15, y = 12, yend = 12,
+           colour = "black", size=3, arrow=arrow())-> ArenaPlot
+
+ArenaPlot
+
+
+GraphObject %>%
+  ggraph(layout = data.frame(x=sppPool$network[,1],
+                             y=sppPool$network[,2])) + 
+  geom_edge_link() + 
+  geom_node_point(aes(fill = Env), size = 4, shape = 21)+
+  coord_fixed()+
+  scale_fill_gradient2(low = 'blue1',midpoint = 20, 
+                       mid = 'beige', high = 'tomato3')+
+  theme(rect = element_blank())+
+  guides( size = FALSE, fill = FALSE)-> SimpleArenaPlot
+
+SimpleArenaPlot
+ggsave( 'Figures/SimpleArenaPlot.png', SimpleArenaPlot,width = 8, height = 3, dpi = 500)
+
+```
+
+```{r}
+
+AllCritCC_df%>%
+  filter( mRate == 1e-07 ) %>%
+  ggplot( aes( col = factor(EPC_MorseA)  , 
+               y = FracExtant1, x =CC_rate  ))+
+  geom_point()+
+  geom_smooth(se=FALSE, method = 'glm' , 
+              method.args=list(family="binomial"))+
+  ylab('Fraction of Species Extant')+
+  xlab('Rate of climate change (v)')+
+  geom_hline(yintercept = 0.5)+
+  theme_classic()+
+  ggtitle( 'i) Critical rate of climate change')+
+  scale_colour_viridis_d(name = 'Asymmetry parameter:',  )+
+  theme(axis.text.y = element_blank(), 
+        legend.direction = 'horizontal')-> PlotA
+
+
+Lags_Results %>%
+    filter( mRate == 1e-07 ) %>%
+  ggplot(aes( x = SpMeanLag , col = factor(EPC_MorseA)))+
+  geom_density( )+
+  ggtitle( 'ii) Lag behind climate shifts')+
+  xlab('Species Lag')+
+    scale_colour_viridis_d(name = 'Asymmetry\nparameter',  )+
+  ylab('')+
+  theme_classic()+
+  guides(col =FALSE)-> PlotB
+
+
+
+results_noleg<-plot_grid(PlotA+guides(col =FALSE), PlotB,
+                         rel_widths = c( 2,2), nrow = 1, scale = 0.9)
+
+ResultsPlots<- plot_grid(results_noleg,get_legend(PlotA),
+                         ncol = 1, rel_heights = c(1,0.05))
+
+
+```
+
+# Illustration of EPCs
+
+```{r}
+
+ data.frame( Env = seq(-2, 7, l = 1000),
+                      Right = CalcR_Morse( seq(-2, 7, l = 1000),
+                                           opt = 0, 1, -1, 10, -100 ),
+                      Left = CalcR_Morse( seq(-2, 7, l = 1000),
+                                          opt = 5, 1, 1, 10, -100 )) %>%
+  gather( key = 'Assymetry', value = 'R', - Env) %>%
+  filter( R > -1) %>%
+  mutate( Assymetry =  ifelse(Assymetry=='Right',
+                              'Right-skewed\n(a = -1)',
+                              'Left-skewed\n(a= +1)'  )) %>% 
+  ggplot() +
+  geom_line( aes( x = Env, y = R, col = Assymetry), size = 3)+
+  facet_grid(Assymetry~.)+
+  theme_classic()+
+  scale_colour_viridis_d(direction = -1)+
+  guides( colour = FALSE)+
+  theme(strip.background = element_blank(),
+        axis.text = element_blank(),
+        axis.line = element_blank(),
+        axis.title  = element_blank(),
+        axis.ticks  = element_blank()) -> PlotC
+
+ PlotC
+ 
+ ### Making colour bar
+colourbar_plot <- ggplot(data = data.frame(x = 0:10,
+                                           y = 0:10),
+                         aes(x = x, y = y,
+                             colour = y)) + 
+  geom_point() +
+  scale_color_gradient2(low = 'blue1',midpoint = 5,
+                       mid = 'beige',
+                       high = 'tomato3',
+                       guide =guide_colourbar(direction = "horizontal",
+                                                 barwidth = 10,
+                                                  title = element_blank(),
+                                                 label = FALSE))+
+  theme_minimal()
+
+ PlotC_bar <- plot_grid(PlotC, get_legend(colourbar_plot),
+                        ncol = 1, rel_heights = c( 3,1))
+ 
+ 
+### Combining
+# plot_grid(PlotA, PlotB,PlotC_bar, rel_widths = c( 2,2,1), nrow = 1, scale = 0.85) -> ResultsPlots
+
+
+```
+
+# All together to make Results Figure
+
+
+```{r}
+SimulationResults<- plot_grid(ArenaPlot, ResultsPlots, ncol = 1,
+                              labels = c('a) Diagram of Arena', 
+                                         'b) Results'),
+                              hjust = -0.1, label_fontface = 'plain' )
+SimulationResults
+ggsave('Figures/SimulationResults.png', SimulationResults,
+       dpi = 600, height = 6, width =10)
+```
+
+# EPC Figure
+
+## Harmonic potential
+
+$$ r =  R_{max}*\left(1- \frac{(E_{vec}-opt)^2}{w^2} \right)$$ 
+
+```{r}
+CalcR_Harm<- function( E_vec, opt, EPC_w,  R_Max, EPC_Min ){
+  y = E_vec-opt  
+  R <-  (R_Max * (1 -   ((y^2)/(EPC_w^2))  )  ) 
+  R[R<EPC_Min] <- EPC_Min
+  return(R)
+}
+
+```
+
+### Basic Morse potential:
+
+simplifying distance from the optima $ y = E_{vec}-opt$
+
+$$R_{Max} * (1 - exp(- a y))^2)$$
+
+### Morse Potential with controllable width
+
+This also include a a niche width term $w$ , and 
+$$  R_{Max}(1-\frac{(1-e^{ay})^2}{a^2w^2})$$
+where:
+
+- $r_{max}$ is the peak
+- $a$ is the assymety
+- $w$ is the niche width
+- $ y = E_{vec}-opt$
+- $E_{opt}$ = the location of the peak
+
+
+```{r}
+CalcR_Morse<- function( E_vec, opt, EPC_w, EPC_MorseA, R_Max, EPC_Min ){
+  y = E_vec-opt
+  R <-  R_Max * (1- ((1 - exp(EPC_MorseA *y))^2)/ (EPC_MorseA^2 * EPC_w^2) ) 
+  R[R<EPC_Min] <- EPC_Min
+  return(R)
+}
+
+```
+
+# Figure of EPCs for paper
+
+```{r}
+
+R_Max = 10
+E_vec = seq(-10, 10, by = 0.001)
+
+A_Harmonic <- data.frame(E_vec = E_vec,
+                         R = CalcR_Harm(E_vec, opt = 0, EPC_w =2 , R_Max =R_Max, EPC_Min= -10 ),
+                         EPC = 'Harmonic')
+
+B_MorsePos <- data.frame(E_vec = E_vec,
+                         R=  CalcR_Morse(E_vec,  opt = 0, EPC_w = 1, 
+                                         EPC_MorseA = 1, R_Max =10,
+                                         EPC_Min = -10 ),
+                         EPC = 'Morse_Pos' )
+
+C_MorseNeg <- data.frame(E_vec = E_vec,
+                         R= CalcR_Morse(E_vec,  opt = 0, EPC_w = 1, 
+                                          EPC_MorseA = -1, R_Max =10,
+                                          EPC_Min = -10 ),
+                         EPC = 'Morse_Neg' )
+
+#### Convolving with weather:
+f.X <- function(x) dnorm(x,0,1)  ## weather of sd = 1 
+f.G <- function(G) CalcR_Morse(G,  opt = 0, EPC_w = 1, EPC_MorseA = 1, R_Max =10, EPC_Min = -10 ) # basis
+f.Z2 <- function(z) integrate(function(x,z) f.G(z-x)*f.X(x),-Inf,Inf,z)$value
+f.Z2 <- Vectorize(f.Z2)                    # need to vectorize the resulting fn.
+ 
+
+D_MorsePosWeather <- data.frame(E_vec = E_vec,
+                                R = f.Z2(E_vec),
+                                EPC = 'Morse_Pos_Weather')
+
+```
+
+```{r}
+          
+A_Harmonic_Plot <-           A_Harmonic %>%
+  ggplot( aes( E_vec, R))+
+  geom_line(size = 1)+
+  coord_fixed(ylim = c(0.1, 10), xlim = c( -5,5))+
+  theme_classic()+
+  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')
+
+
+B_MorsePos_Plot <-   B_MorsePos %>%
+  ggplot( aes( E_vec, R))+
+  geom_line(size = 1)+
+  coord_fixed(ylim = c(0.1, 10), xlim = c( -5,5))+
+  theme_classic()+
+  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')
+
+C_MorseNeg_Plot <-C_MorseNeg %>%
+  ggplot( aes( E_vec, R))+
+  geom_line(size = 1)+
+  coord_fixed(ylim = c(0.1, 10), xlim = c( -5,5))+
+  theme_classic()+
+  geom_vline(xintercept =0, linetype = 'dashed')+ xlab('E')
+
+D_MorsePosWeather_Plot <-D_MorsePosWeather %>%
+  ggplot( aes( E_vec, R))+
+  geom_line(size = 1)+
+  coord_fixed(ylim = c(0.1, 10), xlim = c( -5,5))+
+  theme_classic()+
+  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')
+
+
+plot_grid(A_Harmonic_Plot, B_MorsePos_Plot,
+          C_MorseNeg_Plot,D_MorsePosWeather_Plot,
+          nrow = 2, align = 'hv',
+          labels = c('a) Harmonic',
+                     'b) Morse (a = +1)',
+                     'c) Morse (a = -1)',
+                     'd) With underlying variation' ) ,
+          hjust = -0.1, label_fontface = 'plain', scale = 0.85) -> EPCexamples
+
+EPCexamples
+
+ggsave('Figures/EPCexamples.png', width = 6, height = 5, dpi = 600)
+
+```
+

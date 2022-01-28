@@ -1,0 +1,98 @@
+---
+title: "2 Simulation Run"
+author: "Chris Terry"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+This document runs the code to assemble the communities, then run two tests of the impact of climate change 
+
+It's main output is two lists of data.frames, containing the results of the two tests. These are included in the repository. 
+
+The assembled communities are large (1.2Mb each) so are not included other than an example. If wanted, they can be generated from the code here. 
+
+```{r message = FALSE}
+## Load packages
+library(tidyverse)
+
+### Load all functions
+walk( list.files('FunctionScripts/', full.names = TRUE), source)
+
+```
+
+# Assembling communities
+## Control Parameter setup
+
+Testing two different dispersal rates, but only show one in the results.
+
+```{r}
+TrialName  = 'Morse'
+
+N_Repeats = 100  # repeats per run parameter combination. 
+ParamDF_NC <- expand.grid(  Repeat= paste0('R_', 1:N_Repeats),
+                            mRate = c(1e-7, 1e-5),
+                            EPC_MorseA = c( -1, 1),
+                            TempNoise=  c(0.5),
+                            stringsAsFactors = FALSE) %>%
+  mutate(RunID =  paste0('ID_' , row_number()),
+         TrialName = TrialName)
+
+write_csv(ParamDF_NC, file = 'Outputs/ParamDF_NC.csv')  # saving 'run' parameters
+
+```
+
+## Running Assembly
+
+Map over each assembly, outputting assembled communities. Takes about 20 seconds per community on an average desktop. 1 example is included. 
+
+
+```{r eval = FALSE}
+NC_TrialAssm <- map(1:nrow(ParamDF_NC),
+                    PreAssembly, ParamList = ParamDF_NC,
+                    num_species =100,
+                    length_Relax= 200,
+                    ParameterSource = 'Parameters/Parameters.R')
+```
+# Testing Lags
+
+
+```{r eval = FALSE}
+
+Lags<-map(1:nrow(ParamDF_NC),
+                   safely(Lag_Measurer),
+                   ParamList = ParamDF_NC,  
+                   CC_rate= 0.1, # To match analytics, using quite a slow rate of climate change
+                   length_preCC = 20,
+                   length_CC_preTest = 50,
+                   length_CC=20)
+
+ # save(Lags, file = 'Outputs/Lags' )
+
+```
+
+# Testing Crit CC
+
+```{r eval = FALSE}
+CritCC<-map(1:nrow(ParamDF_NC),
+                        safely(CritCC_Calculator),
+                        ParamList = ParamDF_NC,  
+                        length_CC=50,
+                        CC_rates= seq(0,0.5, l = 11)) ## rates of climate change to use
+
+# save( CritCC, file = 'Outputs/CritCC')
+```
+
+# System Information 
+
+
+```{r}
+sessionInfo()
+```
+
+
+

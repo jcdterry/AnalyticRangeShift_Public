@@ -1,0 +1,102 @@
+---
+title: "1. Model Specification"
+author: "Chris Terry"
+date: "28/01/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction and overall setting. 
+
+All code is publicly available, and has been cleaned to remove the majority of superfluous code. References to scripts given in `typewriter font` are designed to point the interested reader to specific functions (available as described in the data availability statement), in cases where further detail is needed. 
+
+# Overall Setting
+
+The model is based on the population of each species at a set of specific sites (nodes) distributed in a rectangular arena. Each node is assigned a particular environmental value at each point in time. The model is integrated in discrete time. In this simulation the species do not interact, so strictly it is a set of metapopulations, rather than a genuine metapopulaton. However, we will use the terms 'community' or 'assembly' to refer to the set of species present in a particular model run. 
+
+There are two important time scales. We refer to the slower timescale as 'years' and this is the timescale that the envrionment changes. There is also a finer timescale (1/15th), that is used to progress the population dynamics model (see below).
+
+Many parameters are not hardcoded into the model functions, and are instead specified in `Parameters/Parameters.R`.
+
+
+# Spatial Setting
+
+Each assembly has a random spatial distribution of 100 nodes (See figure below for an example), whose $x$ and $y$ coordinates are drawn from a uniform distribution of 0:40 and 0:10 respectively. This process generates areas with varying density of nodes - spatial heterogeneiety.  
+
+![](Figures/SimpleArenaPlot.png)
+
+
+## Envrionment and climate change
+
+Each node is assigned an environmental variable, initially equal to its $x$ value. Each year this is subject to up to two forms of variation:
+
+1. Stochastic variation. This is drawn from an Gaussian distribution ($\sigma = 0.5$), and applied universally across the arena.
+
+2. Climate change. After the date of the onset of climate change, the value of $E$ is increased by a value $v$ at the start of each year. 
+
+
+## Population Growth rate 
+
+Each population has its own unique optimal environmental value ($\phi$), but all share the same environmental performance function based on the Morse potential function (`RCalc.R`). For species $i$ in site $x$ at time $t$: 
+
+
+$$  R_{i,x,t} =  R_{max} \left(1- \dfrac{\left(1 - e^{a (E_{x,t}-\phi_i)}\right)^2}{a^2 w^2}\right) $$
+
+with the additional constraint that $R_{i,x}$ is lower bounded at -100. Here, $R_{max}$ = 10, $a$ = -1 or 1, $w$ = 1. 
+## Node Connectance 
+
+Nodes are determined to be connected with a Gabriel algorithm, that determines the closest node in each direction (`genAdjMat()` in `NetworkGenerators.R`).
+
+
+## Dispersal between nodes
+
+A matrix of between-node dispersal rates is generated from the distance between nodes and some key parameters: migration rate $m$, dispersal length $L$, and normalised so that the total 
+
+If the euclidean distance between two connected nodes A and B = $d_{a,b}$, then the dispersal rate of B to A was:
+
+$$ D_{a,b}  = m \frac{e^{-d/L}   }{ D*} $$
+where the normalising term sums up all the outgoing migration from site B to the set of nodes $n$ that it is connected to: 
+
+$$ D* =   \sum_{n}{  e^{-d_{n,b}/L} }   $$
+
+The dispersal matrix also includes negative diagonal terms       
+      
+ $$ D_{a,a} = -m$$     
+    
+
+
+## Population dynamics within each node
+
+The core population dynamics within each node is a very simple discrete time model (`metacDynamics.R`):
+
+For a number of time steps ($t_{max}$), the population ($B$) at that node ($z$) in the next step was:
+  
+  $$ B_{z,t+1} = B_{z,t} + B_{z,t}(R -  B_{z,t} ) + \sum_n D_{z,n}B_{n,t} $$
+  where, $n$ is the set of all nodes, although in practice only the neighbours contribute. 
+  
+To avoid negatives and ongoing numerical errors, at each step any populations that were to fall below 0 are set to 0. 
+
+In this simulation, 15 of these small time steps are taken each 'year', all under the same envrionmental conditions. 
+ 
+
+
+# Community Asssembly and 'burn-in' 
+
+## Generation of new species 
+
+Each assembly is initiated by generating 100 species (`PopulateSystem.R`). Each is assigned an environmental optimum based on a random uniform distribution bounded 20:30. Each species is then introduced at density 10 at the node closest to this optimum.  A burn in period of 200 years is then run, in which the species can expand to fill their range. 
+
+## Removal of extinct species
+
+At the end of each 'year', any species that are not above a specified extinction threshold ($10^{-6}$) are removed from the simulation (`clean_extinct.r`). 
+
+
+# Lags Test
+
+# Critical Speed of Climate Change Test
+
+
+

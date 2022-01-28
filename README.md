@@ -1,2 +1,29 @@
 # AnalyticRangeShift_Public
  Code to support Terry et al 2022 Range shift paper (title TBC)
+
+
+There are three key documents as `.rmd` files. 
+
+1. `ModelSpecification.rmd`
+ - Generates the appendix in the supplementary material. It details the model structure. 
+2. `SimulationRun.rmd` 
+ - The top-level code that runs the simulation and key analyses.
+ 
+ 3. `Plots.rmd` 
+ - Generates the plots used in the main file. 
+ 
+ 
+The low-level functions are in the folder `FunctionScripts/`. These are not specifically documented, but have been simplified as much as possible.  
+ 
+`Assemblies/` is empty, as it would otherwise be too large for github. It can be populated by running the appropriate section in `SimulationRun.rmd`. 
+
+`AssemblyExample/` contains an example assembled community for the purposes of generating the figure. 
+ 
+ For completeness, the Mathematica file that conducts the analytic results is also included. `xxx.nb`
+ 
+ 
+ Please feel free to reuse as you see fit, but do cite the paper / preprint as appropriate.
+ 
+ Any questions, contact Chris Terry (currrently c.terry [at] qmul.ac.uk)
+ 
+ 
