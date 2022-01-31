@@ -4,11 +4,9 @@ CritCC_Calculator <- function(i,
                               CC_rates= seq(0,0.4, l = 4) ){ # nb rate of 0.4 = 20 degrees shift, nearing edge. 
 
     ## Function tests the number of extinct species at each level of climate change
-  ## Doesn't do anything in terms of measuring starting properties (that is assumed to be done by the builder function, or lag tester
-  
+
   cat(paste('\n Testing: _',i,' of ' ,nrow(ParamList), '___ \n'))
   StartTIME<-Sys.time() 
-  
 
   params <- ParamList[i,]
   
@@ -17,8 +15,7 @@ CritCC_Calculator <- function(i,
     set.seed(i)
 
   ###########################
-  ## 1. Select species to track 
-
+  ## 1. Select species to track (here, all of them)
     ToTrack <- sppPool$p_IDs
     
   #####################################

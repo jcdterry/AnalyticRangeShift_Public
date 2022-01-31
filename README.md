@@ -10,7 +10,7 @@ There are three key documents as `.rmd` files.
  - The top-level code that runs the simulation and key analyses.
  
  3. `Plots.rmd` 
- - Generates the plots used in the main file. 
+ - Generates the plots and does the statistics used in the main file. 
  
  
 The low-level functions are in the folder `FunctionScripts/`. These are not specifically documented, but have been simplified as much as possible.  
@@ -19,7 +19,7 @@ The low-level functions are in the folder `FunctionScripts/`. These are not spec
 
 `AssemblyExample/` contains an example assembled community for the purposes of generating the figure. 
  
- For completeness, the Mathematica file that conducts the analytic results is also included. `xxx.nb`
+ For completeness, the Mathematica file that conducts the analytic results is also included. `Mathematica.nb`
  
  
  Please feel free to reuse as you see fit, but do cite the paper / preprint as appropriate.

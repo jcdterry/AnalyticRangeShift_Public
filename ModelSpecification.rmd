@@ -1,7 +1,6 @@
 ---
-title: "1. Model Specification"
+title: "Appendix C: Model Specification"
 author: "Chris Terry"
-date: "28/01/2022"
 output: pdf_document
 ---
 
@@ -9,33 +8,33 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Introduction and overall setting. 
+# Introduction 
 
-All code is publicly available, and has been cleaned to remove the majority of superfluous code. References to scripts given in `typewriter font` are designed to point the interested reader to specific functions (available as described in the data availability statement), in cases where further detail is needed. 
+This appendix provides further background to the simulation model used to test the potential applicability of the analytic results to situations that include a more complex and heterogeneous spatial and temporal structure. All code is publicly available (as described in the data availability statement) and has been cleaned to remove the majority of superfluous code. References to scripts given in `typewriter font` are designed to point the interested reader to specific functions in cases where further detail is needed. `SimulationRun.rmd` conducts the assembly and tests, results are analysed in `Plots.rmd`. 
 
 # Overall Setting
 
-The model is based on the population of each species at a set of specific sites (nodes) distributed in a rectangular arena. Each node is assigned a particular environmental value at each point in time. The model is integrated in discrete time. In this simulation the species do not interact, so strictly it is a set of metapopulations, rather than a genuine metapopulaton. However, we will use the terms 'community' or 'assembly' to refer to the set of species present in a particular model run. 
+The model is based on the population of each species at a set of specific sites (nodes) distributed in a rectangular arena. Each node is assigned a particular environmental value at each point in time. The model is advanced in discrete time. In this simulation the species do not interact, so strictly it is a set of metapopulations, rather than a genuine metacommunity. However, we will use the terms 'community' or 'assembly' to refer to the set of species present in a particular model run. 
 
-There are two important time scales. We refer to the slower timescale as 'years' and this is the timescale that the envrionment changes. There is also a finer timescale (1/15th), that is used to progress the population dynamics model (see below).
+There are two important time scales. We refer to the slower timescale as 'years' and this is the timescale that the environment changes. There is also a finer timescale (1/15th), that is used to progress the population dynamics model (see below).
 
-Many parameters are not hardcoded into the model functions, and are instead specified in `Parameters/Parameters.R`.
+Many parameters are not hardcoded into the model functions, and are instead specified in `Parameters/Parameters.R`, and where relevant descibed in the text below.
 
 
 # Spatial Setting
 
-Each assembly has a random spatial distribution of 100 nodes (See figure below for an example), whose $x$ and $y$ coordinates are drawn from a uniform distribution of 0:40 and 0:10 respectively. This process generates areas with varying density of nodes - spatial heterogeneiety.  
+Each assembly has a random spatial distribution of 100 nodes (See figure below for an example), whose $x$ and $y$ coordinates are drawn from a uniform distribution of 0:40 and 0:10 respectively. This process generates arenas with notable spatial heterogeneity.  
 
 ![](Figures/SimpleArenaPlot.png)
 
 
-## Envrionment and climate change
+## Environment and climate change
 
 Each node is assigned an environmental variable, initially equal to its $x$ value. Each year this is subject to up to two forms of variation:
 
-1. Stochastic variation. This is drawn from an Gaussian distribution ($\sigma = 0.5$), and applied universally across the arena.
+1. Stochastic variation. This is additive and drawn from a Gaussian distribution ($\sigma = 0.5$), and applied universally across the arena.
 
-2. Climate change. After the date of the onset of climate change, the value of $E$ is increased by a value $v$ at the start of each year. 
+2. Climate change. After the date of the onset of climate change, the value of $E$ is increased by a climate change rate value $v$ at the start of each 'year'. 
 
 
 ## Population Growth rate 
@@ -53,20 +52,19 @@ Nodes are determined to be connected with a Gabriel algorithm, that determines t
 
 ## Dispersal between nodes
 
-A matrix of between-node dispersal rates is generated from the distance between nodes and some key parameters: migration rate $m$, dispersal length $L$, and normalised so that the total 
+A matrix of between-node dispersal rates is generated from the distance between nodes and some key parameters: migration rate $m$, dispersal length $L$, and normalised so that the total emmigration is constant.
 
-If the euclidean distance between two connected nodes A and B = $d_{a,b}$, then the dispersal rate of B to A was:
+If the Euclidean distance between two connected nodes A and B = $d_{a,b}$, then the dispersal rate of B to A was:
 
 $$ D_{a,b}  = m \frac{e^{-d/L}   }{ D*} $$
-where the normalising term sums up all the outgoing migration from site B to the set of nodes $n$ that it is connected to: 
+where the normalising term $D*$ sums up all the outgoing migration from site B to the set of nodes $n$ that it is connected to: 
 
 $$ D* =   \sum_{n}{  e^{-d_{n,b}/L} }   $$
 
-The dispersal matrix also includes negative diagonal terms       
+The dispersal matrix also includes negative diagonal terms representing emmigration:       
       
  $$ D_{a,a} = -m$$     
     
-
 
 ## Population dynamics within each node
 
@@ -75,28 +73,62 @@ The core population dynamics within each node is a very simple discrete time mod
 For a number of time steps ($t_{max}$), the population ($B$) at that node ($z$) in the next step was:
   
   $$ B_{z,t+1} = B_{z,t} + B_{z,t}(R -  B_{z,t} ) + \sum_n D_{z,n}B_{n,t} $$
-  where, $n$ is the set of all nodes, although in practice only the neighbours contribute. 
   
-To avoid negatives and ongoing numerical errors, at each step any populations that were to fall below 0 are set to 0. 
+where, $n$ is the set of all nodes, although in practice only the neighbours contribute. 
+  
+To avoid negatives and ongoing numerical errors, at each step any populations that were to fall below 0 are set to 0.
 
-In this simulation, 15 of these small time steps are taken each 'year', all under the same envrionmental conditions. 
+In this simulation, 15 of these small time steps $t$ are taken each 'year', all under the same environmental conditions. 
  
-
 
 # Community Asssembly and 'burn-in' 
 
 ## Generation of new species 
 
-Each assembly is initiated by generating 100 species (`PopulateSystem.R`). Each is assigned an environmental optimum based on a random uniform distribution bounded 20:30. Each species is then introduced at density 10 at the node closest to this optimum.  A burn in period of 200 years is then run, in which the species can expand to fill their range. 
+Each assembly is initiated by generating 100 species (`PopulateSystem.R`). Each is assigned an environmental optimum ($\phi$) based on a random uniform distribution bounded 20:30. Each species is then introduced at density 10 at the node closest to this optimum.  A burn in period of 200 years is then run, in which the species can expand to fill their range. 
 
 ## Removal of extinct species
 
-At the end of each 'year', any species that are not above a specified extinction threshold ($10^{-6}$) are removed from the simulation (`clean_extinct.r`). 
+At the end of each 'year', any species that are not above a specified extinction threshold ($10^{-6}$) in at least one node are removed from the simulation (`clean_extinct.r`). 
+
+# Tests
+
+Once the communities are assembled (one set of communities with 'warm-skewed' EPCs and the other with 'cold-skewed' EPCs, based on the sign of $a$), two independent tests of the effect of climate change are conducted: 1) the lag between the climate shift and the population shift, 2) the speed of climate change that the species cannot cope with (critical rate).
+
+## Lags
+
+The lags test is run using the function in `LagMeasurer.R`. The core response is the weighted mean x-coordinate of the population distribution across the nodes, the mean population location.  
+To determine the starting location, the dynamics are run for 20 'years' with underlying stochastic climate variation but without climate change, and an average taken. 
+
+Then climate change is introduced at a rate of 0.1 units per year, and 50 years of simulation run to overcome any transient effects. During this period the removal of extinct species is switched off - in practice this makes little difference, but prevents occasional extinctions disrupting the tracking of species movements. The climate change is continued, and the mean population location recorded over 20 subsequent years. Lastly, the total amount of climate change at each of the recording years is compared to the observed population displacement and averaged. Recall that, since the environment maps 1:1 with the x-spatial coordinate, there is a direct correspondence. The total of 7 units (0.1 $\times$ 50+20 ) of climate change would not be enough to push any species off the edge of the arena.
+
+A linear mixed effects model was used to estimate the effect of the direction of EPC asymmetry on the species lag.  Assemblage ID was included as a random effect as the species within each assemblage shared a stochasticity pattern and a spatial network. 
+  
+The total number of observations was 19700, across 200 assemblages. The assemblage random effect had a fitted SD of 0.185, with 0.14 SD residual error remaining. The fitted values of the intercept was 0.440 (SD= 0.019) and the fixed effect of $a = 1$ was 0.114 (SD = 0.026), which were used to calculate the values in the main text. 
 
 
-# Lags Test
+## Critical Speed of Climate Change
 
-# Critical Speed of Climate Change Test
+The critical climate change rate tests was conducted with `CritCC_Calculator.R`. The core response is the proportion of species that go extinct at series of rates of climate change. We tested 50 'years' of climate change at rates of 0 to 0.5, in steps of 0.05. Thesholding was removed, instead we looked at the proportion of species within each assemblage that fell below 1.0 across all nodes (other measures of 'extinction' gave similar results).
+
+The impact of EPC skew direction was estimated using a logistic generalised linear mixed effects model. The rate of climate change was also included as a main effect including an interaction term. The number of species in each assemblage was used as a weighting term and the assemblage ID was incorporated as a random effect. In R syntax this was: `lme4::glmer(Data,   FracExtant1 ~  CC_rate*factor(EPC_A) + (1|AssemblageID), family = 'binomial',  weights = NumberFocalStart ) `
+
+The full model results were:
+
+```{r echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+tabl <- "  # simple table copied in from Plots.html
+
+| |Estimate |Std. Error | z value |p-value |   
+|-------|------|-----|-----|----  |
+|(Intercept)                 | 17.4737  |   0.2311  | 75.618 | < 2e-16 ***
+|CC rate                     |-60.8461  |   0.4460 |-136.427 | < 2e-16 ***
+|EPC   a=1   |  0.8071    | 0.3893    |2.073 |  0.0382 *  
+|CC rate : EPC | -4.0679  |   0.7828  | -5.197 |2.03e-07 ***
+"
+cat(tabl) 
+```
+
+The assemblage ID random effect (over 200 assemblages) had a SD of 2.549 and the total the number of trials was 2200.
 
 
 

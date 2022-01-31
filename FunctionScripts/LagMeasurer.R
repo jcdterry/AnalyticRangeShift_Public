@@ -13,11 +13,6 @@ Lag_Measurer <- function(i,
   cat(paste('\n \n Testing: __',i,' of ' ,nrow(ParamList), '___'))
   StartTIME<-Sys.time() 
   
-  # if(!PreBuilt){ # If need to build, build.  (normally this would be predone)
-  #   PreAssembly(i, ParamList, ParameterSource, length_assembly, length_Relax)
-  # }
-  
-  
   params <- ParamList[i,]
   
   ## Load spoPool from previously saved assembly
