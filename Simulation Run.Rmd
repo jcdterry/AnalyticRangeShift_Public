@@ -35,14 +35,14 @@ TrialName  = 'Morse'
 
 N_Repeats = 100  # repeats per run parameter combination. 
 ParamDF_NC <- expand.grid(  Repeat= paste0('R_', 1:N_Repeats),
-                            mRate = c(1e-7, 1e-5),
-                            EPC_MorseA = c( -1, 1),
-                            TempNoise=  c(0.5),
+                            mRate = 1e-7,
+                            EPC_MorseA = c( -0.9, 0.9),
+                            TempNoise=  0.5,
                             stringsAsFactors = FALSE) %>%
   mutate(RunID =  paste0('ID_' , row_number()),
          TrialName = TrialName)
 
-write_csv(ParamDF_NC, file = 'Outputs/ParamDF_NC.csv')  # saving 'run' parameters
+write_csv(ParamDF_NC,'Outputs/ParamDF_NC.csv')  # saving 'run' parameters
 
 ```
 
@@ -71,21 +71,42 @@ Lags<-map(1:nrow(ParamDF_NC),
                    length_CC_preTest = 50,
                    length_CC=20)
 
- # save(Lags, file = 'Outputs/Lags' )
+  save(Lags, file = 'Outputs/Lags' )
 
 ```
 
-# Testing Crit CC
+# Testing Critical CC Rate
 
 ```{r eval = FALSE}
 CritCC<-map(1:nrow(ParamDF_NC),
                         safely(CritCC_Calculator),
-                        ParamList = ParamDF_NC,  
+                        ParamList =ParamDF_NC,
                         length_CC=50,
-                        CC_rates= seq(0,0.5, l = 11)) ## rates of climate change to use
+                        CC_rates= seq(0,0.4, l = 13)) ## rates of climate change to use
 
-# save( CritCC, file = 'Outputs/CritCC')
+save( CritCC, file = 'Outputs/CritCC')
 ```
+
+
+# Testing Sensitivity to Intervention
+
+NB only running these with the slower movement rate
+
+```{r eval = FALSE}
+
+Sens_CalcResults <-map(1:nrow(ParamDF_NC),
+                       safely(Peak_Sensitivity_Calc),
+                       ParamList = ParamDF_NC,  
+                       length_CC=50,
+                       Locs_to_test= seq(-4,4, by = 0.5),
+                       Width = 1, 
+                       Add_Gain =2,
+                       CC_rate = 0.28)
+
+
+save( Sens_CalcResults, file = 'Outputs/Sens_CalcResults')
+```
+
 
 # System Information 
 

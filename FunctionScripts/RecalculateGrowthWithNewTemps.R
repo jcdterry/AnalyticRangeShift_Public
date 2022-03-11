@@ -15,8 +15,7 @@ RecalculateGrowthWithNewTemps <- function(sppPool){
   
   ## go through each species and calculate R at each node
   for(sp in 1:n_sp ){
-    rMat_New[sp,] <-  CalcR(  sppPool$envMat + weather+ CC, 
-                              sppPool$tVec[sp],  sppPool)  -sppPool$mort
+    rMat_New[sp,] <-  CalcR(  sppPool$envMat + weather+ CC,   sppPool$tVec[sp],  sppPool)
   }
   sppPool$rMat <-    rMat_New
   

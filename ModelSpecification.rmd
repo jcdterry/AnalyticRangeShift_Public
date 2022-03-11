@@ -1,6 +1,5 @@
 ---
-title: "Appendix C: Model Specification"
-author: "Chris Terry"
+title: "Appendix 3: Simulation Model Specification"
 output: pdf_document
 ---
 
@@ -18,7 +17,7 @@ The model is based on the population of each species at a set of specific sites 
 
 There are two important time scales. We refer to the slower timescale as 'years' and this is the timescale that the environment changes. There is also a finer timescale (1/15th), that is used to progress the population dynamics model (see below).
 
-Many parameters are not hardcoded into the model functions, and are instead specified in `Parameters/Parameters.R`, and where relevant descibed in the text below.
+Where parameters are not hardcoded into the model functions they are specified in `Parameters/Parameters.R`, and where relevant described in the text below.
 
 
 # Spatial Setting
@@ -42,9 +41,10 @@ Each node is assigned an environmental variable, initially equal to its $x$ valu
 Each population has its own unique optimal environmental value ($\phi$), but all share the same environmental performance function based on the Morse potential function (`RCalc.R`). For species $i$ in site $x$ at time $t$: 
 
 
-$$  R_{i,x,t} =  R_{max} \left(1- \dfrac{\left(1 - e^{a (E_{x,t}-\phi_i)}\right)^2}{a^2 w^2}\right) $$
+$$  R_{i,x,t} =  R_{max} \left(1- \dfrac{\left(1 - e^{a (E_{x,t}-\phi_i)}\right)^2}{a^2 w^2}\right)$$
 
-with the additional constraint that $R_{i,x}$ is lower bounded at -100. Here, $R_{max}$ = 10, $a$ = -1 or 1, $w$ = 1. 
+with the additional constraint that $R_{i,x}$ is lower bounded at -100. Here, $R_{max}$ = 12, $a$ = -0.9 or 0.9, $w$ = 1. 
+
 ## Node Connectance 
 
 Nodes are determined to be connected with a Gabriel algorithm, that determines the closest node in each direction (`genAdjMat()` in `NetworkGenerators.R`).
@@ -104,12 +104,12 @@ Then climate change is introduced at a rate of 0.1 units per year, and 50 years 
 
 A linear mixed effects model was used to estimate the effect of the direction of EPC asymmetry on the species lag.  Assemblage ID was included as a random effect as the species within each assemblage shared a stochasticity pattern and a spatial network. 
   
-The total number of observations was 19700, across 200 assemblages. The assemblage random effect had a fitted SD of 0.185, with 0.14 SD residual error remaining. The fitted values of the intercept was 0.440 (SD= 0.019) and the fixed effect of $a = 1$ was 0.114 (SD = 0.026), which were used to calculate the values in the main text. 
+The total number of observations was 19948, across 200 assemblages. The fitted assemblage random effect explained a variance of 0.03036, with 0.02912  residual variance remaining. The fitted values of the intercept was  0.46736 (SD= 0.01751 ) and the fixed effect of $a = 0.9$ was 0.15067  (SD =  0.02476), which were used to calculate the values in the main text. 
 
 
 ## Critical Speed of Climate Change
 
-The critical climate change rate tests was conducted with `CritCC_Calculator.R`. The core response is the proportion of species that go extinct at series of rates of climate change. We tested 50 'years' of climate change at rates of 0 to 0.5, in steps of 0.05. Thesholding was removed, instead we looked at the proportion of species within each assemblage that fell below 1.0 across all nodes (other measures of 'extinction' gave similar results).
+The critical climate change rate tests was conducted with `CritCC_Calculator.R`. The core response is the proportion of species that go extinct at series of rates of climate change. We tested 50 'years' of climate change at rates of 0 to 0.4, in steps of 0.025. Thesholding was removed, instead we looked at the proportion of species within each assemblage that fell below 1.0 across all nodes (other measures of 'extinction' gave similar results).
 
 The impact of EPC skew direction was estimated using a logistic generalised linear mixed effects model. The rate of climate change was also included as a main effect including an interaction term. The number of species in each assemblage was used as a weighting term and the assemblage ID was incorporated as a random effect. In R syntax this was: `lme4::glmer(Data,   FracExtant1 ~  CC_rate*factor(EPC_A) + (1|AssemblageID), family = 'binomial',  weights = NumberFocalStart ) `
 
@@ -119,16 +119,38 @@ The full model results were:
 tabl <- "  # simple table copied in from Plots.html
 
 | |Estimate |Std. Error | z value |p-value |   
-|-------|------|-----|-----|----  |
-|(Intercept)                 | 17.4737  |   0.2311  | 75.618 | < 2e-16 ***
-|CC rate                     |-60.8461  |   0.4460 |-136.427 | < 2e-16 ***
-|EPC   a=1   |  0.8071    | 0.3893    |2.073 |  0.0382 *  
-|CC rate : EPC | -4.0679  |   0.7828  | -5.197 |2.03e-07 ***
+|-------|------|-----|-----|----|
+| Intercept       |22.5680   | 0.2484   |90.85   |<2e-16 ***
+| CC_rate           |-74.0872  |  0.5023 |-147.48|   <2e-16 ***
+| EPC a =0.9        |  -4.2961 |   0.3563  |-12.06 |  <2e-16 ***
+| CC_rate:EPC =0.9  |11.4094   | 0.7107   |16.05   |<2e-16 ***
 "
 cat(tabl) 
 ```
 
-The assemblage ID random effect (over 200 assemblages) had a SD of 2.549 and the total the number of trials was 2200.
+The assemblage ID random effect (over 200 assemblages) had a SD of 2.088 and the total the number of trials was 2600.
+
+## Sensitivity to Conservation Intervention. 
+
+The trials of different sensitivities was conducted with `Peak_Sensitivity_Calc()`. The same assemblages were used and climate change is introduced at a rate of $v=0.28$, a rate chosen based on the results of the critical rate of climate change trials described above. 
+
+
+The 'conservation intervention' was modeled as a +2 increase of the underling population growth rate ($R_{i,x,t}$) at particular sites. Sites were initially modified when they had an x-coordinate that fell within the conservation region that was determined for each species based on the location of the optimum, and an offset parameter $L$. As climate change progressed, this window of conservation intervention moved with the climate velocity.  Examples of growth curves modified in this way with different skew directions ($a$) and locatiosn of interventions ($L$) are given in the figure below:
+
+![](Figures/ConservLocs.png)
+
+Each of 200 assemblies (100 with $a = +0.9$, 100 with $a = -0.9$) were run, and analysis was carried out at the level of the assembly. The efficacy of a particular location for conservation interventions was determined by the percentage increase in the fraction of extant species in the conservation case ($\chi_{cons}$), compared to fraction of extant species in the the baseline (no intervention) case($\chi_{base}$): $\frac{(\chi_{cons}-\chi_{base})}{\chi_{base}} \times 100$. 
+
+Assemblages (16/200) where no species survived in the baseline case were excluded. Results are presented by fitting a GAM curve through the untransformed percentage increases for each of the skew directions. This identifies a clearly visible peak in both cases. 
+
+
+# Demonstration of impact of changing $a$ parameter. 
+
+To demonstrate that the general lack of impact of changing the sign of the $a$ parameter we show in the main text is not due the insensitivity of the outcomes to changes in the magnitude of $a$, we generated communities with $a$ values of -0.9, -0.7, -0.3,, 0.3, 0.7 and 0.9, and then tested the critical rate of climate change as described above. As visibile in the figure below, the results show a strong impact of $a$ on $v*$ that is approximately symmetric about $a$ =0. 
+
+
+![](Figures/ImpactofA.png)
+
 
 
 

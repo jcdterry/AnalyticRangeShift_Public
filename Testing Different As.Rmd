@@ -1,0 +1,120 @@
+---
+title: "Testing Different As"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+This document tests different asymmetry parameters, and assesses the impact on critical rate of climate change. 
+Results are reported in `ModelSpecification.rmd`
+
+
+
+```{r message = FALSE}
+## Load packages
+library(tidyverse)
+
+### Load all functions
+walk( list.files('FunctionScripts/', full.names = TRUE), source)
+
+```
+
+```{r}
+TrialName  = 'A_Test'
+
+N_Repeats = 100  # repeats per run parameter combination. 
+ParamDF_Atest <- expand.grid(  Repeat= paste0('R_', 1:N_Repeats),
+                            mRate = 1e-7,
+                            EPC_MorseA = c(-0.9, -0.7, -0.3,
+                                            0.9,  0.7,  0.3),
+                            TempNoise=  0.5,
+                            stringsAsFactors = FALSE) %>%
+  mutate(RunID =  paste0('ID_' , row_number()),
+         TrialName = TrialName)
+
+write_csv(ParamDF_Atest,'Outputs/ParamDF_Atest.csv')  # saving 'run' parameters
+
+```
+
+## Running Assembly
+
+```{r eval = FALSE}
+NC_TrialAssm <- map(1:nrow(ParamDF_Atest),
+                    safely(PreAssembly),
+                    ParamList = ParamDF_Atest,
+                    num_species =100,
+                    length_Relax= 200,
+                    ParameterSource = 'Parameters/Parameters.R')
+```
+
+# Testing Critical CC Rate
+
+```{r eval = FALSE}
+CritCC_Atest<-map(1:nrow(ParamDF_Atest),
+                        safely(CritCC_Calculator),
+                        ParamList = ParamDF_Atest,  
+                        length_CC=50,
+                        CC_rates= seq(0,0.5, l = 11)) ## rates of climate change to use
+
+save( CritCC_Atest, file = 'Outputs/CritCC_Atest')
+```
+
+
+```{r}
+load( 'Outputs/CritCC_Atest')
+
+CritCC_Atest%>%
+  map('result')%>%
+  compact %>%
+  map_df(~.) %>%
+  left_join(ParamDF_Atest, by = "RunID")%>%
+ mutate(FracExtant1 = NumberNowExtant_1  /NumberFocalStart)-> CritCC_DF_Atest
+
+
+CritCC_DF_Atest %>%
+  ggplot( aes( col =EPC_MorseA , group = factor(EPC_MorseA),
+               y = FracExtant1, x =CC_rate  ))+
+  geom_point()+
+  scale_color_gradient2()+
+  facet_grid(EPC_MorseA~., labeller = label_both)+
+  geom_smooth(se=FALSE, method = 'glm' , 
+              method.args=list(family="binomial"))+
+  ggtitle( 'Across all movement rates')
+
+
+
+df_diffA <- data.frame(A = c(-0.9, -0.7, -0.3, 0.3,  0.7, 0.9),
+                       v_star = NA)
+
+for(  i  in 1:6){
+  
+  CritCC_DF_Atest %>%filter(EPC_MorseA==df_diffA$A[i]  ) %>%
+    glm( data = ., family = 'binomial', FracExtant1~ CC_rate) -> mod
+  
+  Coefficents<-summary(mod)$coef[,1]
+  
+  df_diffA$v_star[i]  <-  (-Coefficents[1] )/ Coefficents[2]
+}
+
+
+plot( df_diffA, type = 'b',
+      xlab = 'Asymmetry Parameter\n(a)', 
+      ylab = 'Estimated Critical Rate\nof Climate change\n(v*)')
+
+png( 'Figures/ImpactofA.png', width = 6, height = 4, res = 500, units = 'in')
+par( mar = c( 5.1, 10, 4, 3))
+
+plot( df_diffA, type = 'b',
+      xlab = 'Asymmetry Parameter\n(a)', 
+      ylab = 'Estimated Critical Rate\nof Climate change\n(v*)',)
+
+
+dev.off()
+
+```
+
+
+

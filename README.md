@@ -2,16 +2,16 @@
  Code to support Terry et al 2022 Range shift paper (title TBC)
 
 
-There are three key documents as `.rmd` files. 
+There  key documents are `.rmd` files. 
 
 1. `ModelSpecification.rmd`
- - Generates the appendix in the supplementary material. It details the model structure. 
+ - Generates Appendix 3 in the supplementary material. It details the model structure. 
 2. `SimulationRun.rmd` 
  - The top-level code that runs the simulation and key analyses.
- 
- 3. `Plots.rmd` 
+3. `Plots.rmd` 
  - Generates the plots and does the statistics used in the main file. 
- 
+4. `QuantitativeMatchTest.rmd`
+ - Includes smalle-scale simulations and calculations to conduct a brief quantitative analysis of the model and generate Appendix 4. 
  
 The low-level functions are in the folder `FunctionScripts/`. These are not specifically documented, but have been simplified as much as possible.  
  

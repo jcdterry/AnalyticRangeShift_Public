@@ -16,6 +16,8 @@ library(cowplot)
 library(ggraph)
 library(tidygraph)
 library(igraph)
+
+walk( list.files('FunctionScripts/', full.names = TRUE), source)
 ```
 
 # Loading and unpacking results outputs 
@@ -25,6 +27,7 @@ Saved as a list of dataframes
 ```{r}
 load( 'Outputs/Lags' )
 load( 'Outputs/CritCC')
+load( 'Outputs/Sens_CalcResults')
 
 ParamDF_NC <- read_csv('Outputs/ParamDF_NC.csv')
 
@@ -40,6 +43,15 @@ CritCC%>%
   map_df(~.) %>%
   left_join(ParamDF_NC, by = "RunID")-> CritCC_DF
 
+
+Sens_CalcResults%>%
+  map('result')%>%
+  compact %>%
+  map_df(~.) %>%
+  left_join(ParamDF_NC,
+            by = "RunID")%>%
+  select( - Trial, - TrialName)->Sens_Results_df
+
 ```
 
 # Critical CC Values
@@ -48,8 +60,8 @@ CritCC%>%
 ### NB Joining the two df of Critical CC Values together
 
 CritCC_DF %>%
- mutate(FracExtant1 = NumberNowExtant_1  /NumberFocalStart ,
-        FracExtant001 = NumberNowExtant_0.01  /NumberFocalStart) -> AllCritCC_df
+  mutate(FracExtant1 = NumberNowExtant_1  /NumberFocalStart ,
+         FracExtant001 = NumberNowExtant_0.01  /NumberFocalStart) -> AllCritCC_df
 
 AllCritCC_df%>%
   ggplot( aes( col = factor(EPC_MorseA)  , 
@@ -78,13 +90,13 @@ Coefficents<-summary(Full_RE)$coef[,1]
 
 #Prediction for unscaled y = 0 (frac extinct prob =0.5)
 
-## With asym = -1:
+## With asym = -0.9:
 
 ## 0 = intercept - CC_rate C*
 ##   C* = - intercept / CC_Rate
 (-Coefficents[1] )/ Coefficents[2]
 
-## With asym = 1:
+## With asym = 0.9:
 ## 0 = intercept + CC_rate C*   + Assym + CC_rate x interaction x C*
 ##   C* = - (intercept+ Assym) / (CC_Rate + interaction)  )
 (-(Coefficents[1] + Coefficents[3] ))/ (Coefficents[2]+ Coefficents[4])
@@ -103,11 +115,6 @@ Lags_Results %>%
   ggtitle( 'Effect of Assymetry direction')
 
 
-Single_Lags_Full <- lmer( data = Lags_Results,
-                           SpMeanLag  ~ factor(EPC_MorseA)* log10(mRate) + (1|RunID))
-
-summary(Single_Lags_Full)
-
 
 Single_Lags <- lmer( data = filter( Lags_Results, mRate == 1e-07),
                      SpMeanLag  ~ factor(EPC_MorseA)+ (1|RunID))
@@ -116,24 +123,41 @@ summary(Single_Lags)
 
 
 filter( Lags_Results, mRate == 1e-07) %>%
-group_by(EPC_MorseA) %>%
-    summarise( mean(SpMeanLag, na.rm=TRUE ))
+  group_by(EPC_MorseA) %>%
+  summarise( mean(SpMeanLag, na.rm=TRUE ))
 
 ```
+
+
+## Sensitivity 
+
+
+```{r echo = FALSE}
+Sens_Results_df %>%
+  filter( NumExtant_no_intervention >0) %>%
+  mutate( Frac_Orig_Surv =    NumExtant_no_intervention/NumberFocalStart  ,
+          Frac_Cons_Surc =  NumberNowExtant_1/NumberFocalStart,
+          Incre_Surv = (Frac_Cons_Surc-Frac_Orig_Surv)/Frac_Orig_Surv *100) -> Sens_Results_df_processed
+
+
+
+
+```
+
 
 # Combined plot for paper
 
 ### demonstration plot
 
 ```{r}
-## Load spoPool from previously generated assembly
+## Load sppPool from previously generated assembly
 
 load('AssemblyExample/sppPool_ID_1')
 
-## Use function 
+##load('Assemblies/Morse/sppPool_ID_400')
+##
 
-source( 'FunctionScripts/R functions_discete.R')
-
+SpeciesNumberToUse <- 3
 
 EdgeList<-as_tbl_graph(graph_from_adjacency_matrix(sppPool$topo$adjMat,
                                                    diag = FALSE, mode = 'undirected'))
@@ -143,13 +167,26 @@ EdgeList %>%
   mutate( Node_X = sppPool$network[,1], 
           Node_Y = sppPool$network[,2],
           Env = as.vector(sppPool$envMat),
-          SpeciesDensity = log10(sppPool$bMat_p[1,])) -> GraphObject
+          SpeciesDensity = log10(sppPool$bMat_p[SpeciesNumberToUse,])) -> GraphObject
 
 Curve <- data.frame( Env = seq(10, 40, l = 1000),
-            Response = CalcR_Morse( seq(10, 40, l = 1000),
-                                    opt = sppPool$tVec[1], 1, -1, 10, -100 )) %>%
+                     Response = CalcR_Morse( seq(10, 40, l = 1000),
+                                             opt = sppPool$tVec[SpeciesNumberToUse],
+                                             1, EPC_MorseA = -0.9,
+                                             10, -100 )) %>%
   filter( Response>0.1) %>%
   mutate( ScaleResponse = (Response /3)+11 )
+
+
+### 
+
+### Population density
+
+PopDens <- as.data.frame(GraphObject) %>%
+  filter( SpeciesDensity != -Inf)%>%
+  mutate( RealScaleDens = 10^SpeciesDensity, 
+          ShiftedLine = (RealScaleDens/2)-5)
+
 
 GraphObject %>%
   ggraph(layout = data.frame(x=sppPool$network[,1],
@@ -164,12 +201,21 @@ GraphObject %>%
   #scale_fill_viridis_c( ) +
   theme(rect = element_blank())+
   geom_line( data = Curve, aes( x = Env, y = ScaleResponse), size = 2)+
+  geom_point( data = PopDens, aes( x = Node_X, y = ShiftedLine), 
+              size = 2, colour = 'gray30')+
+  geom_line( data = PopDens, aes( x = Node_X, y = ShiftedLine),
+             size = 1, colour = 'gray30')+
   guides( size = FALSE, fill = FALSE)+
-  annotate("segment", x = 20, xend = 15, y = 12, yend = 12,
+  annotate("text", x = 33, y =13.5,
+           label = "Envrionmental\nPerformance\nCurve (a = -0.9)",
+           hjust = 'left', size = 3)+
+  annotate("text", x = 33, y = -2, label = "Population\nDensity\n(Log-scale)", 
+           hjust = 'left', size = 3)+
+  annotate("label", x = 23, y = 7, label = "Direction of\nMigration")+
+  annotate("segment", x = 27, xend = 18, y = 5, yend = 5,
            colour = "black", size=3, arrow=arrow())-> ArenaPlot
 
 ArenaPlot
-
 
 GraphObject %>%
   ggraph(layout = data.frame(x=sppPool$network[,1],
@@ -183,17 +229,72 @@ GraphObject %>%
   guides( size = FALSE, fill = FALSE)-> SimpleArenaPlot
 
 SimpleArenaPlot
-ggsave( 'Figures/SimpleArenaPlot.png', SimpleArenaPlot,width = 8, height = 3, dpi = 500)
+ggsave( 'Figures/SimpleArenaPlot.png', SimpleArenaPlot,
+        width = 8, height = 3, dpi = 500)
 
 ```
+
+### Illustration of EPCs
+
+```{r}
+
+ExtentOfDiagram <- seq(-4, 4, l = 1000)
+
+SimulationEPCs <-  data.frame( Env = ExtentOfDiagram,
+                               Right = CalcR_Morse( ExtentOfDiagram,
+                                                    opt = 0, 1,
+                                                    EPC_MorseA =  -0.9,
+                                                    10, -100 ),
+                               Left = CalcR_Morse(ExtentOfDiagram,
+                                                  opt = 0, 1, 0.9, 10, -100 )) %>%
+  gather( key = 'Assymetry', value = 'R', - Env) %>%
+  filter( R > -5) %>%
+  mutate( AssymetryWords =  ifelse(Assymetry=='Right',
+                                   'Right-skewed\n(a = -0.9)',
+                                   'Left-skewed\n(a= +0.9)'  )) 
+
+SimulationEPCs%>% 
+  ggplot() +
+  geom_line( aes( x = Env, y = R, col = AssymetryWords), size = 2)+
+  facet_wrap(~AssymetryWords, ncol = 1)+
+  theme_classic()+
+  scale_colour_viridis_d(direction = -1)+
+  guides( colour = FALSE)+
+  theme(strip.background = element_blank(),
+        axis.text = element_blank(),
+        axis.line = element_blank(),
+        axis.title  = element_blank(),
+        axis.ticks  = element_blank()) -> ExampleColouredEPCs
+
+
+
+### Making colour bar
+colourbar_plot <- ggplot(data = data.frame(x = 0:10,
+                                           y = 0:10),
+                         aes(x = x, y = y,
+                             colour = y)) + 
+  geom_point() +
+  scale_color_gradient2(low = 'blue1',midpoint = 5,
+                        mid = 'beige',
+                        high = 'tomato3',
+                        guide =guide_colourbar(direction = "horizontal",
+                                               barwidth = 10,
+                                               title = element_blank(),
+                                               label = FALSE))+
+  theme_minimal()
+
+```
+
+### Results Subplots
 
 ```{r}
 
 AllCritCC_df%>%
   filter( mRate == 1e-07 ) %>%
+  slice(sample(1:n())) %>% ## reorder all points, so the colours overlap better
   ggplot( aes( col = factor(EPC_MorseA)  , 
                y = FracExtant1, x =CC_rate  ))+
-  geom_point()+
+  geom_point(alpha = 0.3)+
   geom_smooth(se=FALSE, method = 'glm' , 
               method.args=list(family="binomial"))+
   ylab('Fraction of Species Extant')+
@@ -207,19 +308,40 @@ AllCritCC_df%>%
 
 
 Lags_Results %>%
-    filter( mRate == 1e-07 ) %>%
+  filter( mRate == 1e-07 ) %>%
   ggplot(aes( x = SpMeanLag , col = factor(EPC_MorseA)))+
   geom_density( )+
   ggtitle( 'ii) Lag behind climate shifts')+
-  xlab('Species Lag')+
-    scale_colour_viridis_d(name = 'Asymmetry\nparameter',  )+
+  xlab('Species Lag in Space\n(Δ)')+
+  scale_colour_viridis_d(name = 'Asymmetry\nparameter',  )+
   ylab('')+
   theme_classic()+
+  theme(axis.text.y = element_blank())+
   guides(col =FALSE)-> PlotB
 
+SimulationEPCs <- mutate( SimulationEPCs,
+                          EPC_MorseA   = ifelse(Assymetry==  'Right', 
+                                                -0.9, 0.9)) %>%
+  filter( R>-5)
 
+Sens_Results_df_processed %>%
+  ggplot( aes (x=Locations, y = Incre_Surv))+
+  geom_vline( xintercept = 0, method = 'gam')+
+  geom_line( data =SimulationEPCs,aes(x=Env,  y= R*10 ), 
+             linetype = 'dashed')+
+  geom_smooth(aes (col = factor(EPC_MorseA )))+
+  ggtitle( 'iii) Sensitivity to Intervention')+
+  xlab( 'Relative Location of Intervention\n(L)')+
+  scale_colour_viridis_d(name = 'Asymmetry\nparameter')+
+  guides(col =FALSE)+
+  facet_grid(factor(EPC_MorseA )~.)+
+  scale_y_continuous(name = '% Increase in Survival',
+                     sec.axis = sec_axis( trans=~./10, name="EPC"))+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text.y = element_blank())  -> PlotC
 
-results_noleg<-plot_grid(PlotA+guides(col =FALSE), PlotB,
+results_noleg<-plot_grid(PlotA+guides(col =FALSE), PlotB,PlotC,
                          rel_widths = c( 2,2), nrow = 1, scale = 0.9)
 
 ResultsPlots<- plot_grid(results_noleg,get_legend(PlotA),
@@ -228,70 +350,24 @@ ResultsPlots<- plot_grid(results_noleg,get_legend(PlotA),
 
 ```
 
-# Illustration of EPCs
 
-```{r}
-
- data.frame( Env = seq(-2, 7, l = 1000),
-                      Right = CalcR_Morse( seq(-2, 7, l = 1000),
-                                           opt = 0, 1, -1, 10, -100 ),
-                      Left = CalcR_Morse( seq(-2, 7, l = 1000),
-                                          opt = 5, 1, 1, 10, -100 )) %>%
-  gather( key = 'Assymetry', value = 'R', - Env) %>%
-  filter( R > -1) %>%
-  mutate( Assymetry =  ifelse(Assymetry=='Right',
-                              'Right-skewed\n(a = -1)',
-                              'Left-skewed\n(a= +1)'  )) %>% 
-  ggplot() +
-  geom_line( aes( x = Env, y = R, col = Assymetry), size = 3)+
-  facet_grid(Assymetry~.)+
-  theme_classic()+
-  scale_colour_viridis_d(direction = -1)+
-  guides( colour = FALSE)+
-  theme(strip.background = element_blank(),
-        axis.text = element_blank(),
-        axis.line = element_blank(),
-        axis.title  = element_blank(),
-        axis.ticks  = element_blank()) -> PlotC
-
- PlotC
- 
- ### Making colour bar
-colourbar_plot <- ggplot(data = data.frame(x = 0:10,
-                                           y = 0:10),
-                         aes(x = x, y = y,
-                             colour = y)) + 
-  geom_point() +
-  scale_color_gradient2(low = 'blue1',midpoint = 5,
-                       mid = 'beige',
-                       high = 'tomato3',
-                       guide =guide_colourbar(direction = "horizontal",
-                                                 barwidth = 10,
-                                                  title = element_blank(),
-                                                 label = FALSE))+
-  theme_minimal()
-
- PlotC_bar <- plot_grid(PlotC, get_legend(colourbar_plot),
-                        ncol = 1, rel_heights = c( 3,1))
- 
- 
-### Combining
-# plot_grid(PlotA, PlotB,PlotC_bar, rel_widths = c( 2,2,1), nrow = 1, scale = 0.85) -> ResultsPlots
-
-
-```
 
 # All together to make Results Figure
 
 
 ```{r}
-SimulationResults<- plot_grid(ArenaPlot, ResultsPlots, ncol = 1,
+
+ArenaWithEPCs <- plot_grid(ExampleColouredEPCs, ArenaPlot,
+                           rel_widths = c(1,4), scale = c(0.7, 1))
+ArenaWithEPCs
+
+SimulationResults<- plot_grid(ArenaWithEPCs, ResultsPlots, ncol = 1,
                               labels = c('a) Diagram of Arena', 
                                          'b) Results'),
-                              hjust = -0.1, label_fontface = 'plain' )
+                              hjust = -0.1, label_fontface = 'plain', scale = 0.95 )
 SimulationResults
-ggsave('Figures/SimulationResults.png', SimulationResults,
-       dpi = 600, height = 6, width =10)
+ggsave('Figures/SimulationResults.pdf', SimulationResults,
+       dpi = 600, height = 6, width =10, device=cairo_pdf)
 ```
 
 # EPC Figure
@@ -312,7 +388,7 @@ CalcR_Harm<- function( E_vec, opt, EPC_w,  R_Max, EPC_Min ){
 
 ### Basic Morse potential:
 
-simplifying distance from the optima $ y = E_{vec}-opt$
+Simplifying distance from the optima $y = E_{vec}-opt$
 
 $$R_{Max} * (1 - exp(- a y))^2)$$
 
@@ -323,7 +399,7 @@ $$  R_{Max}(1-\frac{(1-e^{ay})^2}{a^2w^2})$$
 where:
 
 - $r_{max}$ is the peak
-- $a$ is the assymety
+- $a$ is the asymmety
 - $w$ is the niche width
 - $ y = E_{vec}-opt$
 - $E_{opt}$ = the location of the peak
@@ -352,22 +428,24 @@ A_Harmonic <- data.frame(E_vec = E_vec,
 
 B_MorsePos <- data.frame(E_vec = E_vec,
                          R=  CalcR_Morse(E_vec,  opt = 0, EPC_w = 1, 
-                                         EPC_MorseA = 1, R_Max =10,
+                                         EPC_MorseA = 0.9, R_Max =10,
                                          EPC_Min = -10 ),
                          EPC = 'Morse_Pos' )
 
 C_MorseNeg <- data.frame(E_vec = E_vec,
                          R= CalcR_Morse(E_vec,  opt = 0, EPC_w = 1, 
-                                          EPC_MorseA = -1, R_Max =10,
-                                          EPC_Min = -10 ),
+                                        EPC_MorseA = -0.9, R_Max =10,
+                                        EPC_Min = -10 ),
                          EPC = 'Morse_Neg' )
 
 #### Convolving with weather:
 f.X <- function(x) dnorm(x,0,1)  ## weather of sd = 1 
-f.G <- function(G) CalcR_Morse(G,  opt = 0, EPC_w = 1, EPC_MorseA = 1, R_Max =10, EPC_Min = -10 ) # basis
+f.G <- function(G) CalcR_Morse(G,  opt = 0, EPC_w = 1, 
+                               EPC_MorseA = 0.9,
+                               R_Max =10, EPC_Min = -10 ) # basis
 f.Z2 <- function(z) integrate(function(x,z) f.G(z-x)*f.X(x),-Inf,Inf,z)$value
 f.Z2 <- Vectorize(f.Z2)                    # need to vectorize the resulting fn.
- 
+
 
 D_MorsePosWeather <- data.frame(E_vec = E_vec,
                                 R = f.Z2(E_vec),
@@ -375,50 +453,122 @@ D_MorsePosWeather <- data.frame(E_vec = E_vec,
 
 ```
 
+
 ```{r}
-          
+
 A_Harmonic_Plot <-           A_Harmonic %>%
   ggplot( aes( E_vec, R))+
   geom_line(size = 1)+
-  coord_fixed(ylim = c(0.1, 10), xlim = c( -5,5))+
+  coord_fixed(ylim = c(-5, 10), xlim = c( -5,5), ratio = 0.5)+
   theme_classic()+
-  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')
+  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')
 
 
 B_MorsePos_Plot <-   B_MorsePos %>%
   ggplot( aes( E_vec, R))+
   geom_line(size = 1)+
-  coord_fixed(ylim = c(0.1, 10), xlim = c( -5,5))+
+  coord_fixed(ylim = c(-5, 10), xlim = c( -5,5), ratio = 0.5)+
   theme_classic()+
-  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')
+  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')
 
 C_MorseNeg_Plot <-C_MorseNeg %>%
   ggplot( aes( E_vec, R))+
   geom_line(size = 1)+
-  coord_fixed(ylim = c(0.1, 10), xlim = c( -5,5))+
+  coord_fixed(ylim = c(-5, 10), xlim = c( -5,5), ratio = 0.5)+
   theme_classic()+
-  geom_vline(xintercept =0, linetype = 'dashed')+ xlab('E')
+  geom_vline(xintercept =0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')
 
 D_MorsePosWeather_Plot <-D_MorsePosWeather %>%
   ggplot( aes( E_vec, R))+
   geom_line(size = 1)+
-  coord_fixed(ylim = c(0.1, 10), xlim = c( -5,5))+
+  coord_fixed(ylim = c(-5, 10), xlim = c( -5,5), ratio = 0.5)+
   theme_classic()+
-  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')
+  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')
 
 
 plot_grid(A_Harmonic_Plot, B_MorsePos_Plot,
           C_MorseNeg_Plot,D_MorsePosWeather_Plot,
           nrow = 2, align = 'hv',
           labels = c('a) Harmonic',
-                     'b) Morse (a = +1)',
-                     'c) Morse (a = -1)',
+                     'b) Morse (a = +0.9)',
+                     'c) Morse (a = -0.9)',
                      'd) With underlying variation' ) ,
           hjust = -0.1, label_fontface = 'plain', scale = 0.85) -> EPCexamples
 
 EPCexamples
 
-ggsave('Figures/EPCexamples.png', width = 6, height = 5, dpi = 600)
+ggsave('Figures/EPCexamples.png', width = 7, height = 5, dpi = 600)
 
 ```
 
+# Figure illustrating conservation intervention
+
+
+```{r warning = FALSE}
+
+walk( list.files('FunctionScripts/', full.names = TRUE), source)
+
+E_vec <- seq(15, 25, l = 1000)
+opt = 20
+
+Rmat_plus1   <-  matrix(CalcR_Morse( E_vec, opt, EPC_w=1, EPC_MorseA=+0.9, R_Max=12, EPC_Min=-10 ), nrow=1)
+Rmat_minus1  <-  matrix(CalcR_Morse( E_vec, opt, EPC_w=1, EPC_MorseA=-0.9, R_Max=12, EPC_Min=-10 ), nrow=1)
+
+R_Examples <- data.frame( E = E_vec, 
+                          Rmat_plus1= Rmat_plus1,
+                          Rmat_minus1 = Rmat_minus1,
+                          Rmod_a1_Lneg2 = ConservationAction( RMat=Rmat_plus1, 
+                                                              envMat = E_vec, CC=0,  tVec = opt,
+                                                              Location = -2,  Width = 1, Add_Gain  =2)[1,],
+                          Rmod_a1_L1 = ConservationAction( RMat=Rmat_plus1, 
+                                                           envMat = E_vec, CC=0,  tVec = opt,
+                                                           Location = 0,  Width = 1, Add_Gain  =2)[1,], 
+                          Rmod_aneg1_Lneg2 = ConservationAction( RMat=Rmat_minus1, 
+                                                                 envMat = E_vec, CC=0,  tVec = opt,
+                                                                 Location = -1,  Width = 1, Add_Gain  =2)[1,], 
+                          Rmod_aneg1_L1 = ConservationAction( RMat=Rmat_minus1, 
+                                                              envMat = E_vec, CC=0,  tVec = opt,
+                                                              Location = 0.5,  Width = 1, Add_Gain  =2)[1,])
+
+
+
+A<- ggplot( R_Examples,aes(x = E))+
+  geom_line(aes(y= Rmod_a1_Lneg2 ), col = 'red')+
+  geom_line(aes(y= Rmat_plus1 ))+
+  ylim(-5, 12)+ylab( 'Growth Rate') +theme_minimal() +geom_vline( xintercept = opt) +
+  geom_vline( xintercept = opt-2, col = 'red', linetype = 'dashed')
+
+
+B<- ggplot( R_Examples,aes(x = E))+
+  geom_line(aes(y= Rmod_a1_L1 ), col = 'red')+
+  geom_line(aes(y= Rmat_plus1 ))+
+  ylim(-5, 12)+ylab( 'Growth Rate')+theme_minimal()+
+  geom_vline( xintercept = opt) +
+  geom_vline( xintercept = opt-0, col = 'red', linetype = 'dashed')
+
+
+C<- ggplot( R_Examples,aes(x = E))+
+  geom_line(aes(y= Rmod_aneg1_Lneg2 ), col = 'red')+
+  geom_line(aes(y= Rmat_minus1 ))+
+  ylim(-5, 12)+ylab( 'Growth Rate')+theme_minimal()+
+  geom_vline( xintercept = opt) +
+  geom_vline( xintercept = opt-1, col = 'red', linetype = 'dashed')
+
+
+D<- ggplot( R_Examples,aes(x = E))+
+  geom_line(aes(y= Rmod_aneg1_L1 ), col = 'red')+
+  geom_line(aes(y= Rmat_minus1 ))+
+  ylim(-5, 12)+ylab( 'Growth Rate')+theme_minimal()+
+  geom_vline( xintercept = opt) +
+  geom_vline( xintercept = opt+0.5, col = 'red', linetype = 'dashed')
+
+
+
+plot_grid(A, B, C,D, labels = c('a) a = +0.9, L = -2',
+                                'b) a = +0.9, L = 0',
+                                'c) a = -0.9, L = -1',
+                                'd) a = -0.9, L = 0.5'), scale = 0.8)
+
+ggsave('Figures/ConservLocs.png', width = 6, height=4, dpi = 500)
+
+```

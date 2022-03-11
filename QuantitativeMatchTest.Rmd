@@ -1,0 +1,383 @@
+---
+title: "Appendix 4: Quantitative Performance of the Analytic Model"
+output:
+  pdf_document: 
+    fig_height: 3
+    keep_tex: yes
+  html_document: default
+---
+
+
+To further support our results, we examined how well the quantitative predictions of the analytic results corresponded to our simulation results. While many of the parameters in the simulation model align closely with the analytic model, the introduction of spatial heterogeneity, and the need to introduce density-dependent growth  mean that there is not a perfect correspondence. To resolve this we use observations of our simulation model and the analytic model framework to identify reasonable approximations of the parameters used in our main results. We then test the predictions for the critical rate of climate change and the lag in our simulation models.  While there is an inevitable degree of circularity in these analyses, in general they show a reasonable correspondence and provide support the use of our analytic model outside of the strict domain that it is defined within.
+
+A R Markdown document that includes the code used to run the simulations and generate this document is available with the code supplement (`QuantitativeMatchTest.rmd`). 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r message = FALSE, warning = FALSE}
+## Load packages
+library(tidyverse)
+library(lme4)
+library(cowplot)
+
+### Load all functions
+walk( list.files('FunctionScripts/', full.names = TRUE), source)
+
+# Step 0 - Generating a community
+
+TrialName  = 'QuantMatch'
+ParamDF_QuantMatch <- data.frame(  Repeat= paste0('R_', 1:2),
+                                   mRate = 1e-7,
+                                   EPCshape = 'Morse',
+                                   EPC_MorseA = c(-0.9, 0.9),
+                                   TempNoise=  0,
+                                   RunID =  paste0('ID_' , 1:2),
+                                   TrialName = TrialName,
+                                   stringsAsFactors = FALSE)
+
+```
+
+```{r eval = FALSE}
+### Running Assembly
+ParamDF_QuantMatch <- map(1:nrow(ParamDF_QuantMatch),
+                    PreAssembly,
+                    ParamList = ParamDF_QuantMatch,
+                    num_species =100,
+                    length_Relax= 200,
+                    ParameterSource = 'Parameters/Parameters.R')
+
+```
+
+## Estimating population growth rates, with and without climate change 
+
+To estimate the population growth rate without climate change $\lambda_0$, we first took an example assembled simulated community of 100 species as described in the other Appendices (using $a$ = -0.9, $\sigma =0$). We then observed the increase in total population biomass of each species when the density dependent term was removed over 50 time steps.  Dispersal between nodes carried on unaffected. This generated linear increases in log-biomasses (Figure S1a), through which we fit linear models to estimate the slope in each case. There was a moderate spread of estimated values  across the 100 species, but the mean was approximately 5.4, which was the vlaue we carried forward to later calculations.
+
+```{r}
+metaCDynamics_NoComp<- function( relaxT, sppPool) {
+  rMat   = sppPool$rMat
+  dMat = sppPool$dMat_n
+  timescale = sppPool$timescale   
+  
+  B_prod<- sppPool$bMat_p
+  
+  for( t_step in 2:(relaxT+1)){  # Run through time steps
+    local_change_P = B_prod * rMat                                  # Convert from per-producer gain rates, to total changes
+    immigration_P <- B_prod %*% dMat                                # Calculate dispersal
+    B_prod <- B_prod + (local_change_P + immigration_P) *timescale # Combine
+    if(any( B_prod<0)){B_prod[B_prod<0]<-0}
+  }
+  return(B_prod)
+}
+```
+
+
+```{r}
+## load up an example community 
+load('Assemblies/QuantMatch/sppPool_ID_1')
+
+###########################
+## 1. Select species to track 
+ToTrack <- sppPool$p_IDs
+sppPool$thresh <- 0
+TotalT = 50
+
+## container for totals
+PopThroughTime <- matrix(NA, nrow =  TotalT, 
+                         ncol = length(ToTrack))
+
+
+for(t in 1:TotalT){
+  sppPool$SimIter = sppPool$SimIter +1
+  Endpoint_biomasses<-  metaCDynamics_NoComp(relaxT = sppPool$tMax,sppPool = sppPool)
+  sppPool <-   clean_extinct(sppPool, Endpoint_biomasses)$sppPool
+  PopThroughTime[t,] <- rowSums(Endpoint_biomasses)
+}
+
+
+### fitting a line to the slope:
+
+
+times <- (1:TotalT)
+
+lambda_set <- rep(NA,  length(ToTrack))
+
+ for(sp in 1:length(ToTrack) ){
+   lambda_set[sp] <- lm(log(PopThroughTime[,sp])~times)$coef[2]
+ } 
+  
+  
+lambda_zero <- mean(lambda_set) ## although nb skew
+
+## Most have a slope of around 5.4
+  
+par(mfrow = c(1,2))
+
+plot(log(PopThroughTime[,1]), xlab = 'Time', ylab = 'Total Population (log(N))', main = 'a)')
+log(PopThroughTime[,2]) %>% points
+log(PopThroughTime[,3]) %>% points
+log(PopThroughTime[,4]) %>% points
+log(PopThroughTime[,5]) %>% points
+
+
+  hist(lambda_set, xlab = 'Growth rate estimates ', main = 'b)')  
+
+```
+
+*Figure S1*  a) Five example population trajectories, without climate change or density-dependent growth restraints, used to estimate $\lambda_0$. b) Histogram of estimated $\lambda_0$ values 
+
+In order to estimate $\lambda$, the growth rate with climate change, we repeated the estimation procedure, but with the introduction of climate change for 50 time steps. To allow for initial distribution adjustment, we fit our linear model through the final 25 time steps. We trialed this for two climate change rates $v = 0.1$ and $v = 0.2$. 
+
+
+```{r include = FALSE}
+### v = 0.1
+load('Assemblies/QuantMatch/sppPool_ID_1')
+
+length_CC=50
+sppPool$CC_rate <- 0.1
+sppPool$thresh <- 0
+sppPool$CC_start <- sppPool$SimIter+1 # start CC in the next step
+
+PopThroughTime_CC <- matrix(NA, nrow =  TotalT, 
+                            ncol = length(ToTrack))
+
+for(CC_step in 1:length_CC){
+  sppPool$SimIter = sppPool$SimIter +1
+  sppPool<-RecalculateGrowthWithNewTemps(sppPool)
+  Endpoint_biomasses<-  metaCDynamics_NoComp(relaxT = sppPool$tMax,sppPool = sppPool)
+  sppPool <-   clean_extinct(sppPool, Endpoint_biomasses)$sppPool 
+  PopThroughTime_CC[CC_step,] <- rowSums(Endpoint_biomasses)
+  
+}
+
+# 
+# plot(log(PopThroughTime_CC[,1])) 
+# log(PopThroughTime_CC[,2]) %>% points
+# log(PopThroughTime_CC[,3]) %>% points
+# log(PopThroughTime_CC[,4]) %>% points
+# log(PopThroughTime_CC[,5]) %>% points
+  
+
+## Chopping off first 25 time steps, as not settled yet
+
+times <- (26:TotalT)
+PopThroughTime_CC_cut <- PopThroughTime_CC[26:TotalT,]
+lambda_set_CC <- rep(NA,  length(ToTrack))
+
+ for(sp in 1:length(ToTrack) ){
+   lambda_set_CC[sp] <- lm(log(PopThroughTime_CC_cut[,sp])~times)$coef[2]
+ } 
+  
+lambda_set_CC_0.1 <- lambda_set_CC
+
+```
+
+```{r include = FALSE}
+### v = 0.2
+load('Assemblies/QuantMatch/sppPool_ID_1')
+
+length_CC=50
+sppPool$CC_rate <- 0.2
+sppPool$thresh <- 0
+sppPool$CC_start <- sppPool$SimIter+1 # start CC in the next step
+
+PopThroughTime_CC <- matrix(NA, nrow =  TotalT, 
+                            ncol = length(ToTrack))
+
+sppPool$weather_record <- rep(0, 500)  ### switch off weather [NB better to redo without any weather built in]
+
+for(CC_step in 1:length_CC){
+  cat('.')
+  sppPool$SimIter = sppPool$SimIter +1
+  sppPool<-RecalculateGrowthWithNewTemps(sppPool)
+  Endpoint_biomasses<-  metaCDynamics_NoComp(relaxT = sppPool$tMax,sppPool = sppPool)
+  sppPool <-   clean_extinct(sppPool, Endpoint_biomasses)$sppPool 
+  PopThroughTime_CC[CC_step,] <- rowSums(Endpoint_biomasses)
+  
+}
+
+
+# plot(log(PopThroughTime_CC[,1])) 
+# log(PopThroughTime_CC[,2]) %>% points
+# log(PopThroughTime_CC[,3]) %>% points
+# log(PopThroughTime_CC[,4]) %>% points
+# log(PopThroughTime_CC[,5]) %>% points
+#   
+
+## Chopping off first 25 time steps, as not settled yet
+
+times <- (26:TotalT)
+
+PopThroughTime_CC_cut <- PopThroughTime_CC[26:TotalT,]
+
+lambda_set_CC <- rep(NA,  length(ToTrack))
+
+ for(sp in 1:length(ToTrack) ){
+   lambda_set_CC[sp] <- lm(log(PopThroughTime_CC_cut[,sp])~times)$coef[2]
+ } 
+
+lambda_set_CC_0.2 <- lambda_set_CC
+ 
+```
+
+
+```{r}
+par(mfrow = c(1,2))
+
+
+hist(lambda_set_CC_0.1, main = 'a) v = 0.1', xlab = 'Growth rate estimates ')  ## average about 4.9
+lam_0.1 <- mean(lambda_set_CC_0.1)  
+  
+hist(lambda_set_CC_0.2, main = 'b) v = 0.2', xlab = 'Growth rate estimates ')  ## average about 3.4
+lam_0.2 <- mean(lambda_set_CC_0.2) 
+
+```
+
+
+*Figure S2*  Histograms showing distribution of estimates of intrinsic growth rate in the presence of climate change $\lambda$, where cliate change is introduced at a) $v=0.1$, where the mean was approximately 4.9 b) v =0.2 , where the mean was approximately 3.4.  
+
+
+## Inferring dispersal rates and predicting $v*$
+
+
+To infer the effective dispersal rates in terms of the analytic model parameter $D$ in our spatial heterogeonous simulated communities, we use the expression derived in the main text for the reduction in growth rates with climate change, $\lambda = \lambda_0 -  v^2 /D$, rearrange to find $D=  v^2/(\lambda_0-\lambda)$. Then using the result from the main text  $v^\ast = \sqrt{4D\lambda_0  }$, we estimate the expected critical value of climate change that leads to extinction as 0.65. We then test this in the simulations, trialling 
+
+```{r}
+D1 <- (0.1^2)/(lambda_zero- lam_0.1  )
+
+
+D2 <- (0.2^2)/(lambda_zero- lam_0.2  )
+
+```
+
+```{r}
+v_star1 <- sqrt( 4* D1 *5.4   )
+vstart2 <- sqrt( 4* D2 *5.4   )
+```
+This gives us:
+
+
+|$\lambda_0$|$v$ |Fit $\lambda$ | Derived $D$| Predicted $v*$ |
+|--|--|--|--|--|
+|5.4|0.1 | 4.9| 0.005|  0.514|
+|5.4|0.2 | 3.4|0.012 | 0.336 |
+
+
+The $D$ values should be the same in each case, so this inconsistency is a little concerning.  However, the estimates for the critical rate fo climate change are in line with the 'true' value, which from simulations was found to be around $v=0.35$. 
+
+```{r message=FALSE, include=FALSE}
+### Observed v*
+
+CritCC<-map(1:nrow(ParamDF_QuantMatch),
+                        safely(CritCC_Calculator),
+                        ParamList =ParamDF_QuantMatch,
+                        length_CC=40,
+                        CC_rates= seq(0.2,0.4, by = 0.02))
+
+CritCC%>%
+  map('result')%>%
+  compact %>%
+  map_df(~.) %>%
+  left_join(ParamDF_QuantMatch, by = "RunID") %>%
+  select(CC_rate,  NumberNowExtant_1 ,EPC_MorseA) %>% 
+  spread(EPC_MorseA, NumberNowExtant_1  )
+```
+
+
+## Inferring $R_{max}$ and predicting lag. 
+
+Although a value of $R_{max}$ is specified in the simulation model (as 8), other changes in the model may not make this relation between models direct. We estimate the value of the maximum growth rate at the optimum $R_{max}$ using the expression 
+
+$$\lambda_0 =  R_{max}-\frac{\sqrt{D R_{max}}}{w}+\frac{a^2D}{4}$$ 
+
+which we solve to find $R_{max}$ (assuming $w = 1$, to simplify):
+ 
+ $$ R_{max} = \frac{1}{4}\left(2 \sqrt{-a D^2 + D^2 + 4 D \lambda_0} - a D + 2 D + 4 \lambda_0 \right)$$
+
+```{r echo = FALSE}
+## https://www.wolframalpha.com/input?i=L++%3D+R-%5Csqrt%7BD*R%7D%2B%5Cfrac%7Ba*D%7D%7B4%7D%2C+solve+for+R
+# v = 0.1
+# https://www.wolframalpha.com/input?i=L++%3D+R-%5Csqrt%7BD*R%7D%2B%5Cfrac%7Ba*D%7D%7B4%7D%2C++L+%3D+3.3%2C+D+%3D+0.00476%2C+a+%3D+0.9%2C++solve+for+R
+
+# v = 0.2
+# https://www.wolframalpha.com/input?i=L++%3D+R-%5Csqrt%7BD*R%7D%2B%5Cfrac%7Ba*D%7D%7B4%7D%2C++L+%3D+1.8%2C+D+%3D+0.0111%2C+a+%3D+0.9%2C++solve+for+R
+
+Rmax1 = 5.56951
+Rmax2 = 5.65787
+
+
+Delta1_t <- 1/(2*sqrt(D1*Rmax1)) + (0.9^2)/Rmax1
+
+
+Delta2_t <- 1/(2*sqrt(D2*Rmax2)) + (0.9^2)/Rmax2
+
+
+
+```
+
+We then use these values to estimate the expected lag in time with climate change from:
+
+$$\Delta^{time}\rightarrow\ \frac{w}{2\sqrt{DR_{max}}}\
+  +\frac{a^2w\left(\sigma^{2}\sqrt{DR_{max}}+2Dw\right)}{4DR_{max}}$$
+
+which since we do not here include weather ($\sigma$ = 0), and maintain $w$ as 1,  simplifies to:
+
+$$\Delta^{time} \rightarrow\ \frac{1}{2\sqrt{DR_{max}}}\
+  +\frac{a^2}{R_{max}}$$
+  
+  
+The calcualted values are:
+  
+|$\lambda_0$|$v$ |Fit $\lambda$ | Derived $D$|  Derived $R_{max}$|   $\Delta^{time}$| $\Delta^{space}$|
+|--|--|--|--|--|--|--|
+|5.4        |0.1 | 4.9          | 0.005      |      5.56             |  3.075       |       0.3075          |
+|5.4        |0.2 | 3.4          |0.012       |      5.65             |  2.04        |       0.408          |
+
+
+The observed lags in space in these simulation runs averaged at 0.478 for the $v=0.1$ case and 1.01 for the $v = 0.2$ case. The magnitude is approximately correct, but there is a significant discordance. 
+
+```{r  include = FALSE}
+Lags0.1<-map(1:nrow(ParamDF_QuantMatch),
+                   safely(Lag_Measurer),
+                   ParamList = ParamDF_QuantMatch,  
+                   CC_rate= 0.1, 
+                   length_preCC = 20,
+                   length_CC_preTest = 50,
+                   length_CC=20)
+
+Lags0.2<-map(1:nrow(ParamDF_QuantMatch),
+                   safely(Lag_Measurer),
+                   ParamList = ParamDF_QuantMatch,  
+                   CC_rate= 0.2, 
+                   length_preCC = 20,
+                   length_CC_preTest = 50,
+                   length_CC=20)
+```
+
+```{r include = FALSE}
+Lags0.1%>%
+  map('result')%>%
+  compact %>%
+  map_df(~.) %>%
+  left_join(ParamDF_QuantMatch, by = "RunID") %>%
+  group_by(EPC_MorseA )  %>%
+  summarise(mean(SpMeanLag ))
+  
+  
+Lags0.2%>%
+  map('result')%>%
+  compact %>%
+  map_df(~.) %>%
+  left_join(ParamDF_QuantMatch, by = "RunID") %>%
+  group_by(EPC_MorseA )  %>%
+  summarise(mean(SpMeanLag ))
+  
+
+
+```
+
+
+
