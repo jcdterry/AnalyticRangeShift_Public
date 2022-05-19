@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This document runs the code to assemble the communities, then run two tests of the impact of climate change 
 
-It's main output is two lists of data.frames, containing the results of the two tests. These are included in the repository. 
+Its main output is two lists of data.frames, containing the results of the two tests. These are included in the repository. 
 
 The assembled communities are large (1.2Mb each) so are not included other than an example. If wanted, they can be generated from the code here. 
 

@@ -237,18 +237,16 @@ lam_0.2 <- mean(lambda_set_CC_0.2)
 ```
 
 
-*Figure S2*  Histograms showing distribution of estimates of intrinsic growth rate in the presence of climate change $\lambda$, where cliate change is introduced at a) $v=0.1$, where the mean was approximately 4.9 b) v =0.2 , where the mean was approximately 3.4.  
+*Figure S2*  Histograms showing distribution of estimates of intrinsic growth rate in the presence of climate change $\lambda$, where climate change is introduced at a) $v=0.1$, where the mean was approximately  3.049 b) v =0.2 , where the mean was approximately 1.697.  
 
 
 ## Inferring dispersal rates and predicting $v*$
 
 
-To infer the effective dispersal rates in terms of the analytic model parameter $D$ in our spatial heterogeonous simulated communities, we use the expression derived in the main text for the reduction in growth rates with climate change, $\lambda = \lambda_0 -  v^2 /D$, rearrange to find $D=  v^2/(\lambda_0-\lambda)$. Then using the result from the main text  $v^\ast = \sqrt{4D\lambda_0  }$, we estimate the expected critical value of climate change that leads to extinction as 0.65. We then test this in the simulations, trialling 
+To infer the effective dispersal rates in terms of the analytic model parameter $D$ in our spatial heterogeneous simulated communities, we use the expression derived in the main text for the reduction in growth rates with climate change, $\lambda = \lambda_0 -  v^2 /D$, rearrange to find $D=  v^2/(\lambda_0-\lambda)$. Then using the result from the main text  $v^\ast = \sqrt{4D\lambda_0  }$, we estimate the expected critical value of climate change that leads to extinction as 0.65. We then test this in the simulations, trialling 
 
 ```{r}
 D1 <- (0.1^2)/(lambda_zero- lam_0.1  )
-
-
 D2 <- (0.2^2)/(lambda_zero- lam_0.2  )
 
 ```
@@ -262,8 +260,8 @@ This gives us:
 
 |$\lambda_0$|$v$ |Fit $\lambda$ | Derived $D$| Predicted $v*$ |
 |--|--|--|--|--|
-|5.4|0.1 | 4.9| 0.005|  0.514|
-|5.4|0.2 | 3.4|0.012 | 0.336 |
+|5.4|0.1 | 3.049| 0.005|  0.514|
+|5.4|0.2 | 1.697|0.012 | 0.336 |
 
 
 The $D$ values should be the same in each case, so this inconsistency is a little concerning.  However, the estimates for the critical rate fo climate change are in line with the 'true' value, which from simulations was found to be around $v=0.35$. 
@@ -329,7 +327,7 @@ $$\Delta^{time} \rightarrow\ \frac{1}{2\sqrt{DR_{max}}}\
   +\frac{a^2}{R_{max}}$$
   
   
-The calcualted values are:
+The calculated values are:
   
 |$\lambda_0$|$v$ |Fit $\lambda$ | Derived $D$|  Derived $R_{max}$|   $\Delta^{time}$| $\Delta^{space}$|
 |--|--|--|--|--|--|--|
