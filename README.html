@@ -169,13 +169,13 @@ pre code {
 
 <div id="analyticrangeshift_public" class="section level1">
 <h1>AnalyticRangeShift_Public</h1>
-<p>Code to support Terry et al 2022 Range shift paper (title TBC)</p>
-<p>There are three key documents as <code>.rmd</code> files.</p>
+<p>Code to support Terry et al 2022 <em>Schrödinger’s range-shifting cat: analytic predictions for the effect of asymmetric environmental performance for climate change responses</em></p>
+<p>There key documents are <code>.rmd</code> files.</p>
 <ol style="list-style-type: decimal">
 <li><code>ModelSpecification.rmd</code></li>
 </ol>
 <ul>
-<li>Generates the appendix in the supplementary material. It details the model structure.</li>
+<li>Generates Appendix 3 in the supplementary material. It details the model structure.</li>
 </ul>
 <ol start="2" style="list-style-type: decimal">
 <li><code>SimulationRun.rmd</code></li>
@@ -189,12 +189,18 @@ pre code {
 <ul>
 <li>Generates the plots and does the statistics used in the main file.</li>
 </ul>
+<ol start="4" style="list-style-type: decimal">
+<li><code>QuantitativeMatchTest.rmd</code></li>
+</ol>
+<ul>
+<li>Includes smalle-scale simulations and calculations to conduct a brief quantitative analysis of the model and generate Appendix 4.</li>
+</ul>
 <p>The low-level functions are in the folder <code>FunctionScripts/</code>. These are not specifically documented, but have been simplified as much as possible.</p>
 <p><code>Assemblies/</code> is empty, as it would otherwise be too large for github. It can be populated by running the appropriate section in <code>SimulationRun.rmd</code>.</p>
 <p><code>AssemblyExample/</code> contains an example assembled community for the purposes of generating the figure.</p>
 <p>For completeness, the Mathematica file that conducts the analytic results is also included. <code>Mathematica.nb</code></p>
 <p>Please feel free to reuse as you see fit, but do cite the paper / preprint as appropriate.</p>
-<p>Any questions, contact Chris Terry (currrently c.terry [at] qmul.ac.uk)</p>
+<p>Any questions, contact Chris Terry (currrently c.terry [at] qmul.ac.uk) or Axel Rossberg (a.rossberg[at]qmul.ac.uk)</p>
 </div>
 
 

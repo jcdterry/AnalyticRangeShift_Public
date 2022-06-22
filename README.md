@@ -1,6 +1,5 @@
 # AnalyticRangeShift_Public
- Code to support Terry et al 2022 Range shift paper (title TBC)
-
+ Code to support Terry et al 2022 *Schrödinger’s range-shifting cat: analytic predictions for the effect of asymmetric environmental performance for climate change responses*
 
 There  key documents are `.rmd` files. 
 
@@ -24,6 +23,6 @@ The low-level functions are in the folder `FunctionScripts/`. These are not spec
  
  Please feel free to reuse as you see fit, but do cite the paper / preprint as appropriate.
  
- Any questions, contact Chris Terry (currrently c.terry [at] qmul.ac.uk)
+ Any questions, contact Chris Terry (currrently c.terry [at] qmul.ac.uk) or Axel Rossberg (a.rossberg[at]qmul.ac.uk)
  
  
