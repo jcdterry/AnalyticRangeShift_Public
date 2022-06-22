@@ -1,5 +1,5 @@
 ---
-title: "Appendix 3: Simulation Model Specification"
+title: "SI 3: Simulation Model Specification"
 output: pdf_document
 ---
 
@@ -47,12 +47,12 @@ with the additional constraint that $R_{i,x}$ is lower bounded at -100. Here, $R
 
 ## Node Connectance 
 
-Nodes are determined to be connected with a Gabriel algorithm, that determines the closest node in each direction (`genAdjMat()` in `NetworkGenerators.R`).
+Nodes are determined to be connected with a Gabriel algorithm (see figure above), that determines the closest node in each direction (`genAdjMat()` in `NetworkGenerators.R`).
 
 
 ## Dispersal between nodes
 
-A matrix of between-node dispersal rates is generated from the distance between nodes and some key parameters: migration rate $m$, dispersal length $L$, and normalised so that the total emmigration is constant.
+A matrix of between-node dispersal rates is generated from the distance between nodes and some key parameters: migration rate $m$, dispersal length $L$, and normalised so that the total emigration is constant.
 
 If the Euclidean distance between two connected nodes A and B = $d_{a,b}$, then the dispersal rate of B to A was:
 
@@ -61,7 +61,7 @@ where the normalising term $D*$ sums up all the outgoing migration from site B t
 
 $$ D* =   \sum_{n}{  e^{-d_{n,b}/L} }   $$
 
-The dispersal matrix also includes negative diagonal terms representing emmigration:       
+The dispersal matrix also includes negative diagonal terms representing emigration:       
       
  $$ D_{a,a} = -m$$     
     
@@ -109,14 +109,14 @@ The total number of observations was 19948, across 200 assemblages. The fitted a
 
 ## Critical Speed of Climate Change
 
-The critical climate change rate tests was conducted with `CritCC_Calculator.R`. The core response is the proportion of species that go extinct at series of rates of climate change. We tested 50 'years' of climate change at rates of 0 to 0.4, in steps of 0.025. Thesholding was removed, instead we looked at the proportion of species within each assemblage that fell below 1.0 across all nodes (other measures of 'extinction' gave similar results).
+The critical climate change rate tests was conducted with `CritCC_Calculator.R`. The core response is the proportion of species that go extinct at series of rates of climate change. We tested 50 'years' of climate change at rates of 0 to 0.4, in steps of 0.025. Thresholding was removed, instead we looked at the proportion of species within each assemblage that fell below 1.0 across all nodes (other measures of 'extinction' gave similar results).
 
 The impact of EPC skew direction was estimated using a logistic generalised linear mixed effects model. The rate of climate change was also included as a main effect including an interaction term. The number of species in each assemblage was used as a weighting term and the assemblage ID was incorporated as a random effect. In R syntax this was: `lme4::glmer(Data,   FracExtant1 ~  CC_rate*factor(EPC_A) + (1|AssemblageID), family = 'binomial',  weights = NumberFocalStart ) `
 
 The full model results were:
 
 ```{r echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
-tabl <- "  # simple table copied in from Plots.html
+tabl <- " 
 
 | |Estimate |Std. Error | z value |p-value |   
 |-------|------|-----|-----|----|
@@ -128,6 +128,10 @@ tabl <- "  # simple table copied in from Plots.html
 cat(tabl) 
 ```
 
+*Table S3.1* Model fits for the critical rate of climate change. 
+
+
+
 The assemblage ID random effect (over 200 assemblages) had a SD of 2.088 and the total the number of trials was 2600.
 
 ## Sensitivity to Conservation Intervention. 
@@ -135,9 +139,11 @@ The assemblage ID random effect (over 200 assemblages) had a SD of 2.088 and the
 The trials of different sensitivities was conducted with `Peak_Sensitivity_Calc()`. The same assemblages were used and climate change is introduced at a rate of $v=0.28$, a rate chosen based on the results of the critical rate of climate change trials described above. 
 
 
-The 'conservation intervention' was modeled as a +2 increase of the underling population growth rate ($R_{i,x,t}$) at particular sites. Sites were initially modified when they had an x-coordinate that fell within the conservation region that was determined for each species based on the location of the optimum, and an offset parameter $L$. As climate change progressed, this window of conservation intervention moved with the climate velocity.  Examples of growth curves modified in this way with different skew directions ($a$) and locatiosn of interventions ($L$) are given in the figure below:
+The 'conservation intervention' was modeled as a +2 increase of the underlying population growth rate ($R_{i,x,t}$) at particular sites. Sites were initially modified when they had an x-coordinate that fell within the conservation region that was determined for each species based on the location of the optimum, and an offset parameter $L$. As climate change progressed, this window of conservation intervention moved with the climate velocity.  Examples of growth curves modified in this way with different skew directions ($a$) and locations of interventions ($L$) are given in the figure below:
 
 ![](Figures/ConservLocs.png)
+
+**Figure S3.1** Illustration of how conservation impacts were modelled by increasing the growth rates in an intervention window centered $L$ spatial units from the optimum.
 
 Each of 200 assemblies (100 with $a = +0.9$, 100 with $a = -0.9$) were run, and analysis was carried out at the level of the assembly. The efficacy of a particular location for conservation interventions was determined by the percentage increase in the fraction of extant species in the conservation case ($\chi_{cons}$), compared to fraction of extant species in the the baseline (no intervention) case($\chi_{base}$): $\frac{(\chi_{cons}-\chi_{base})}{\chi_{base}} \times 100$. 
 
@@ -146,11 +152,10 @@ Assemblages (16/200) where no species survived in the baseline case were exclude
 
 # Demonstration of impact of changing $a$ parameter. 
 
-To demonstrate that the general lack of impact of changing the sign of the $a$ parameter we show in the main text is not due the insensitivity of the outcomes to changes in the magnitude of $a$, we generated communities with $a$ values of -0.9, -0.7, -0.3,, 0.3, 0.7 and 0.9, and then tested the critical rate of climate change as described above. As visibile in the figure below, the results show a strong impact of $a$ on $v*$ that is approximately symmetric about $a$ =0. 
+To demonstrate that the general lack of impact of changing the sign of the $a$ parameter we show in the main text is not due the insensitivity of the outcomes to changes in the magnitude of $a$, we generated communities with $a$ values of -0.9, -0.7, -0.3,, 0.3, 0.7 and 0.9, and then tested the critical rate of climate change as described above. As visible in the figure below, the results show a strong impact of $a$ on $v*$ that is approximately symmetric about $a$ =0. 
 
 
 ![](Figures/ImpactofA.png)
 
-
-
+**Figure S3.2** Approximately symmetric impact of asymmetry parameter on the critical rate of climate change.
 

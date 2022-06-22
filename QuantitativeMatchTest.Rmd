@@ -1,5 +1,5 @@
 ---
-title: "Appendix 4: Quantitative Performance of the Analytic Model"
+title: "SI 4: Quantitative Performance of the Analytic Model"
 output:
   pdf_document: 
     fig_height: 3
@@ -44,17 +44,17 @@ ParamDF_QuantMatch <- data.frame(  Repeat= paste0('R_', 1:2),
 ```{r eval = FALSE}
 ### Running Assembly
 ParamDF_QuantMatch <- map(1:nrow(ParamDF_QuantMatch),
-                    PreAssembly,
-                    ParamList = ParamDF_QuantMatch,
-                    num_species =100,
-                    length_Relax= 200,
-                    ParameterSource = 'Parameters/Parameters.R')
+                          PreAssembly,
+                          ParamList = ParamDF_QuantMatch,
+                          num_species =100,
+                          length_Relax= 200,
+                          ParameterSource = 'Parameters/Parameters.R')
 
 ```
 
 ## Estimating population growth rates, with and without climate change 
 
-To estimate the population growth rate without climate change $\lambda_0$, we first took an example assembled simulated community of 100 species as described in the other Appendices (using $a$ = -0.9, $\sigma =0$). We then observed the increase in total population biomass of each species when the density dependent term was removed over 50 time steps.  Dispersal between nodes carried on unaffected. This generated linear increases in log-biomasses (Figure S1a), through which we fit linear models to estimate the slope in each case. There was a moderate spread of estimated values  across the 100 species, but the mean was approximately 5.4, which was the vlaue we carried forward to later calculations.
+To estimate the population growth rate without climate change $\lambda_0$, we first took an example assembled simulated community of 100 species as described in the other Appendices (using $a$ = -0.9, $\sigma =0$). We then observed the increase in total population biomass of each species when the density dependent term was removed over 50 time steps.  Dispersal between nodes carried on unaffected. This generated linear increases in log-biomasses (Figure S4.1a), through which we fit linear models to estimate the slope in each case. There was a moderate spread of estimated values  across the 100 species, but the mean was approximately 4.96, which was the value we carried forward to later calculations.
 
 ```{r}
 metaCDynamics_NoComp<- function( relaxT, sppPool) {
@@ -75,7 +75,7 @@ metaCDynamics_NoComp<- function( relaxT, sppPool) {
 ```
 
 
-```{r}
+```{r fig.height=3}
 ## load up an example community 
 load('Assemblies/QuantMatch/sppPool_ID_1')
 
@@ -105,15 +105,15 @@ times <- (1:TotalT)
 
 lambda_set <- rep(NA,  length(ToTrack))
 
- for(sp in 1:length(ToTrack) ){
-   lambda_set[sp] <- lm(log(PopThroughTime[,sp])~times)$coef[2]
- } 
-  
-  
+for(sp in 1:length(ToTrack) ){
+  lambda_set[sp] <- lm(log(PopThroughTime[,sp])~times)$coef[2]
+} 
+
+
 lambda_zero <- mean(lambda_set) ## although nb skew
 
 ## Most have a slope of around 5.4
-  
+
 par(mfrow = c(1,2))
 
 plot(log(PopThroughTime[,1]), xlab = 'Time', ylab = 'Total Population (log(N))', main = 'a)')
@@ -123,157 +123,94 @@ log(PopThroughTime[,4]) %>% points
 log(PopThroughTime[,5]) %>% points
 
 
-  hist(lambda_set, xlab = 'Growth rate estimates ', main = 'b)')  
+hist(lambda_set, xlab = 'Growth rate estimates ', main = 'b)')  
 
 ```
 
-*Figure S1*  a) Five example population trajectories, without climate change or density-dependent growth restraints, used to estimate $\lambda_0$. b) Histogram of estimated $\lambda_0$ values 
+*Figure S4.1*  a) Five example population trajectories, without climate change or density-dependent growth restraints, used to estimate $\lambda_0$. b) Histogram of estimated $\lambda_0$ values showing distribution of species responses. 
 
-In order to estimate $\lambda$, the growth rate with climate change, we repeated the estimation procedure, but with the introduction of climate change for 50 time steps. To allow for initial distribution adjustment, we fit our linear model through the final 25 time steps. We trialed this for two climate change rates $v = 0.1$ and $v = 0.2$. 
-
+In order to estimate $\lambda$, the growth rate with climate change, we repeated the estimation procedure, but with the introduction of climate change for 50 time steps. To allow for initial distribution adjustment, we fit our linear model through the final 25 time steps. We trialled this for a series of climate change rates $v$ up to 0.03, in which region climate change as a quadratic impact on population growth rate, as predicted by our model. 
 
 ```{r include = FALSE}
-### v = 0.1
-load('Assemblies/QuantMatch/sppPool_ID_1')
+V_vec = seq(0, 0.03, by = 0.002)
+v_df <- data.frame( V = V_vec, lambda_cc = NA)
 
-length_CC=50
-sppPool$CC_rate <- 0.1
-sppPool$thresh <- 0
-sppPool$CC_start <- sppPool$SimIter+1 # start CC in the next step
-
-PopThroughTime_CC <- matrix(NA, nrow =  TotalT, 
-                            ncol = length(ToTrack))
-
-for(CC_step in 1:length_CC){
-  sppPool$SimIter = sppPool$SimIter +1
-  sppPool<-RecalculateGrowthWithNewTemps(sppPool)
-  Endpoint_biomasses<-  metaCDynamics_NoComp(relaxT = sppPool$tMax,sppPool = sppPool)
-  sppPool <-   clean_extinct(sppPool, Endpoint_biomasses)$sppPool 
-  PopThroughTime_CC[CC_step,] <- rowSums(Endpoint_biomasses)
+for( i in 1:length(V_vec)){
   
+  
+  load('Assemblies/QuantMatch/sppPool_ID_1')
+  
+  length_CC=50
+  sppPool$CC_rate <- V_vec[i]
+  sppPool$thresh <- 0
+  sppPool$CC_start <- sppPool$SimIter+1 # start CC in the next step
+  
+  PopThroughTime_CC <- matrix(NA, nrow =  TotalT, 
+                              ncol = length(ToTrack))
+  
+  for(CC_step in 1:length_CC){
+    sppPool$SimIter = sppPool$SimIter +1
+    sppPool<-RecalculateGrowthWithNewTemps(sppPool)
+    Endpoint_biomasses<-  metaCDynamics_NoComp(relaxT = sppPool$tMax,sppPool = sppPool)
+    sppPool <-   clean_extinct(sppPool, Endpoint_biomasses)$sppPool 
+    PopThroughTime_CC[CC_step,] <- rowSums(Endpoint_biomasses)
+    
+  }
+  
+  ## Chopping off first 25 time steps, as not settled yet
+  
+  times <- (26:TotalT)
+  PopThroughTime_CC_cut <- PopThroughTime_CC[26:TotalT,]
+  lambda_set_CC <- rep(NA,  length(ToTrack))
+  
+  for(sp in 1:length(ToTrack) ){
+    lambda_set_CC[sp] <- lm(log(PopThroughTime_CC_cut[,sp])~times)$coef[2]
+  } 
+  
+  v_df$lambda_cc[i] <- mean(lambda_set_CC)
 }
 
-# 
-# plot(log(PopThroughTime_CC[,1])) 
-# log(PopThroughTime_CC[,2]) %>% points
-# log(PopThroughTime_CC[,3]) %>% points
-# log(PopThroughTime_CC[,4]) %>% points
-# log(PopThroughTime_CC[,5]) %>% points
-  
+v_df$D = (v_df$V^2)/(lambda_zero- v_df$lambda_cc)
 
-## Chopping off first 25 time steps, as not settled yet
-
-times <- (26:TotalT)
-PopThroughTime_CC_cut <- PopThroughTime_CC[26:TotalT,]
-lambda_set_CC <- rep(NA,  length(ToTrack))
-
- for(sp in 1:length(ToTrack) ){
-   lambda_set_CC[sp] <- lm(log(PopThroughTime_CC_cut[,sp])~times)$coef[2]
- } 
-  
-lambda_set_CC_0.1 <- lambda_set_CC
 
 ```
 
-```{r include = FALSE}
-### v = 0.2
-load('Assemblies/QuantMatch/sppPool_ID_1')
+## Inferring dispersal rates
 
-length_CC=50
-sppPool$CC_rate <- 0.2
-sppPool$thresh <- 0
-sppPool$CC_start <- sppPool$SimIter+1 # start CC in the next step
+To infer the effective dispersal rates in terms of the analytic model parameter $D$ in our spatial heterogeneous simulated communities, we use the expression derived in the main text for the reduction in growth rates with climate change, $\lambda = \lambda_0 -  v^2 /D$, rearrange to find $D=  v^2/(\lambda_0-\lambda)$ (Fig. S4.2b). We fit a linear model through the estimates of $D$ (excluding the two lowest values of $v$)to determine the value of $D$ when $v = 0$  (0.000775).
 
-PopThroughTime_CC <- matrix(NA, nrow =  TotalT, 
-                            ncol = length(ToTrack))
-
-sppPool$weather_record <- rep(0, 500)  ### switch off weather [NB better to redo without any weather built in]
-
-for(CC_step in 1:length_CC){
-  cat('.')
-  sppPool$SimIter = sppPool$SimIter +1
-  sppPool<-RecalculateGrowthWithNewTemps(sppPool)
-  Endpoint_biomasses<-  metaCDynamics_NoComp(relaxT = sppPool$tMax,sppPool = sppPool)
-  sppPool <-   clean_extinct(sppPool, Endpoint_biomasses)$sppPool 
-  PopThroughTime_CC[CC_step,] <- rowSums(Endpoint_biomasses)
-  
-}
+```{r echo = FALSE}
+par(mfrow=c(1,2))
 
 
-# plot(log(PopThroughTime_CC[,1])) 
-# log(PopThroughTime_CC[,2]) %>% points
-# log(PopThroughTime_CC[,3]) %>% points
-# log(PopThroughTime_CC[,4]) %>% points
-# log(PopThroughTime_CC[,5]) %>% points
-#   
+m1<-lm(D~V, v_df[-c(1,2),] )
+#coefficients(m1)
 
-## Chopping off first 25 time steps, as not settled yet
+plot(lambda_cc~V, v_df, main = 'a.                                    ')
+plot(D~V, v_df, main = 'b.                                    ' ,
+     ylim = c( 0, 0.012) )
+lines(x = seq(0, 0.2, l = 100),
+      y= predict(m1, newdata = data.frame(V=seq(0, 0.2, l = 100))))
 
-times <- (26:TotalT)
-
-PopThroughTime_CC_cut <- PopThroughTime_CC[26:TotalT,]
-
-lambda_set_CC <- rep(NA,  length(ToTrack))
-
- for(sp in 1:length(ToTrack) ){
-   lambda_set_CC[sp] <- lm(log(PopThroughTime_CC_cut[,sp])~times)$coef[2]
- } 
-
-lambda_set_CC_0.2 <- lambda_set_CC
- 
+D_v0 <- unname(coefficients(m1)[1])
 ```
 
+*Figure S4.2*  a) Estimates of intrinsic growth rate in the presence of climate change $\lambda$, where climate change is introduced at various rates ($v$). b) inferred values of the dispersal rate $D$ using trials at different speeds of climate change. 
+
+## Predicting $v*$
+Then using the result from the main text  $v^\ast = \sqrt{4D\lambda_0  }$, and the estimate $D$ for the low $v$ case, we next estimate the expected critical value of climate change that leads to extinction as  0.124. This of the right magnitude but still substantionally lower than the 'true' value, which from simulations was found to be around $v=0.35$. 
 
 ```{r}
-par(mfrow = c(1,2))
-
-
-hist(lambda_set_CC_0.1, main = 'a) v = 0.1', xlab = 'Growth rate estimates ')  ## average about 4.9
-lam_0.1 <- mean(lambda_set_CC_0.1)  
-  
-hist(lambda_set_CC_0.2, main = 'b) v = 0.2', xlab = 'Growth rate estimates ')  ## average about 3.4
-lam_0.2 <- mean(lambda_set_CC_0.2) 
-
+v_star1 <- sqrt( 4* D_v0 *lambda_zero   )
 ```
-
-
-*Figure S2*  Histograms showing distribution of estimates of intrinsic growth rate in the presence of climate change $\lambda$, where climate change is introduced at a) $v=0.1$, where the mean was approximately  3.049 b) v =0.2 , where the mean was approximately 1.697.  
-
-
-## Inferring dispersal rates and predicting $v*$
-
-
-To infer the effective dispersal rates in terms of the analytic model parameter $D$ in our spatial heterogeneous simulated communities, we use the expression derived in the main text for the reduction in growth rates with climate change, $\lambda = \lambda_0 -  v^2 /D$, rearrange to find $D=  v^2/(\lambda_0-\lambda)$. Then using the result from the main text  $v^\ast = \sqrt{4D\lambda_0  }$, we estimate the expected critical value of climate change that leads to extinction as 0.65. We then test this in the simulations, trialling 
-
-```{r}
-D1 <- (0.1^2)/(lambda_zero- lam_0.1  )
-D2 <- (0.2^2)/(lambda_zero- lam_0.2  )
-
-```
-
-```{r}
-v_star1 <- sqrt( 4* D1 *lambda_zero   )
-vstart2 <- sqrt( 4* D2 *lambda_zero   )
-```
-This gives us:
-
-
-|$\lambda_0$|$v$ |Fit $\lambda$ | Derived $D$| Predicted $v*$ |
-|--|--|--|--|--|
-|4.96|0.1 | 3.049| 0.005| 0.322|
-|4.96|0.2 | 1.697|0.012 | 0.493|
-
-
-The $D$ values should be the same in each case, so this inconsistency is a little concerning.  However, the estimates for the critical rate fo climate change are in line with the 'true' value, which from simulations was found to be around $v=0.35$. 
 
 ```{r message=FALSE, include=FALSE}
 ### Observed v*
 
-CritCC<-map(1:nrow(ParamDF_QuantMatch),
-                        safely(CritCC_Calculator),
-                        ParamList =ParamDF_QuantMatch,
-                        length_CC=40,
-                        CC_rates= seq(0.2,0.4, by = 0.02))
+CritCC<-map(1,safely(CritCC_Calculator),
+            ParamList =ParamDF_QuantMatch,
+            length_CC=40,
+            CC_rates= seq(0.2,0.4, by = 0.02))
 
 CritCC%>%
   map('result')%>%
@@ -292,67 +229,55 @@ Although a value of $R_{max}$ is specified in the simulation model (as 8), other
 $$\lambda_0 =  R_{max}-\frac{\sqrt{D R_{max}}}{w}+\frac{a^2D}{4}$$ 
 
 which we solve to find $R_{max}$ (assuming $w = 1$, to simplify):
- 
- $$ R_{max} = \frac{1}{4}\left(2 \sqrt{-a D^2 + D^2 + 4 D \lambda_0} - a D + 2 D + 4 \lambda_0 \right)$$
+
+$$ R_{max} = \frac{1}{4}\left(2 \sqrt{-a D^2 + D^2 + 4 D \lambda_0} - a D + 2 D + 4 \lambda_0 \right)$$
 
 ```{r echo = FALSE}
 ## https://www.wolframalpha.com/input?i=L++%3D+R-%5Csqrt%7BD*R%7D%2B%5Cfrac%7Ba*D%7D%7B4%7D%2C+solve+for+R
-# v = 0.1
-# https://www.wolframalpha.com/input?i=L++%3D+R-%5Csqrt%7BD*R%7D%2B%5Cfrac%7Ba*D%7D%7B4%7D%2C++L+%3D+3.3%2C+D+%3D+0.00476%2C+a+%3D+0.9%2C++solve+for+R
 
-# v = 0.2
-# https://www.wolframalpha.com/input?i=L++%3D+R-%5Csqrt%7BD*R%7D%2B%5Cfrac%7Ba*D%7D%7B4%7D%2C++L+%3D+1.8%2C+D+%3D+0.0111%2C+a+%3D+0.9%2C++solve+for+R
+D = D_v0
+a = 0.9
 
-Rmax1 = 5.56951
-Rmax2 = 5.65787
+RMax <- 0.25 *(  2*sqrt(-a*D^2 + D^2 + 4*D*lambda_zero) - a*D + 2*D + 4*lambda_zero )
 
-
-Delta1_t <- 1/(2*sqrt(D1*Rmax1)) + (0.9^2)/Rmax1
-
-
-Delta2_t <- 1/(2*sqrt(D2*Rmax2)) + (0.9^2)/Rmax2
-
-
+Delta1_t <- 1/(2*sqrt(D*RMax)) + (0.9^2)/RMax
+#Delta1_t*0.1
+#Delta1_t*0.2
 
 ```
 
 We then use these values to estimate the expected lag in time with climate change from:
 
 $$\Delta^{time}\rightarrow\ \frac{w}{2\sqrt{DR_{max}}}\
-  +\frac{a^2w\left(\sigma^{2}\sqrt{DR_{max}}+2Dw\right)}{4DR_{max}}$$
++\frac{a^2w\left(\sigma^{2}\sqrt{DR_{max}}+2Dw\right)}{4DR_{max}}$$
 
 which since we do not here include weather ($\sigma$ = 0), and maintain $w$ as 1,  simplifies to:
 
 $$\Delta^{time} \rightarrow\ \frac{1}{2\sqrt{DR_{max}}}\
-  +\frac{a^2}{R_{max}}$$
-  
-  
-The calculated values are:
-  
-|$\lambda_0$|$v$ |Fit $\lambda$ | Derived $D$|  Derived $R_{max}$|   $\Delta^{time}$| $\Delta^{space}$|
-|--|--|--|--|--|--|--|
-|4.96        |0.1 | 3.049          | 0.005      |      5.56             |  3.075       |       0.3075          |
-|4.96        |0.2 | 1.697          |0.012       |      5.65             |  2.04        |       0.408          |
++\frac{a^2}{R_{max}}$$
 
+reaching:
 
-The observed lags in space in these simulation runs averaged at 0.478 for the $v=0.1$ case and 1.01 for the $v = 0.2$ case. The magnitude is approximately correct, but there is a significant discordance. 
+$$\Delta^{time} =  8.17$$
+
+Converted into lags in space, at $v = 0.1$, $\Delta^{space} =   0.817$, and at  $v = 0.2$, $\Delta^{space} =  1.635$. The corresponding observed spatial lag values from the corresponding simulations were 0.478 and 1.01. The magnitude is approximately correct, but there is a significant discordance. 
 
 ```{r  include = FALSE}
 Lags0.1<-map(1:nrow(ParamDF_QuantMatch),
-                   safely(Lag_Measurer),
-                   ParamList = ParamDF_QuantMatch,  
-                   CC_rate= 0.1, 
-                   length_preCC = 20,
-                   length_CC_preTest = 50,
-                   length_CC=20)
+             safely(Lag_Measurer),
+             ParamList = ParamDF_QuantMatch,  
+             CC_rate= 0.1, 
+             length_preCC = 20,
+             length_CC_preTest = 50,
+             length_CC=20)
 
 Lags0.2<-map(1:nrow(ParamDF_QuantMatch),
-                   safely(Lag_Measurer),
-                   ParamList = ParamDF_QuantMatch,  
-                   CC_rate= 0.2, 
-                   length_preCC = 20,
-                   length_CC_preTest = 50,
-                   length_CC=20)
+             safely(Lag_Measurer),
+             ParamList = ParamDF_QuantMatch,  
+             CC_rate= 0.2, 
+             length_preCC = 20,
+             length_CC_preTest = 50,
+             length_CC=20)
 ```
 
 ```{r include = FALSE}
@@ -363,8 +288,8 @@ Lags0.1%>%
   left_join(ParamDF_QuantMatch, by = "RunID") %>%
   group_by(EPC_MorseA )  %>%
   summarise(mean(SpMeanLag ))
-  
-  
+
+
 Lags0.2%>%
   map('result')%>%
   compact %>%
@@ -372,7 +297,7 @@ Lags0.2%>%
   left_join(ParamDF_QuantMatch, by = "RunID") %>%
   group_by(EPC_MorseA )  %>%
   summarise(mean(SpMeanLag ))
-  
+
 
 
 ```

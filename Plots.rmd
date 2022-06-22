@@ -201,15 +201,15 @@ GraphObject %>%
   #scale_fill_viridis_c( ) +
   theme(rect = element_blank())+
   geom_line( data = Curve, aes( x = Env, y = ScaleResponse), size = 2)+
-  geom_point( data = PopDens, aes( x = Node_X, y = ShiftedLine), 
-              size = 2, colour = 'gray30')+
-  geom_line( data = PopDens, aes( x = Node_X, y = ShiftedLine),
-             size = 1, colour = 'gray30')+
+  #geom_point( data = PopDens, aes( x = Node_X, y = ShiftedLine),            ### underlying population density plot
+  #            size = 2, colour = 'gray30')+
+  #geom_line( data = PopDens, aes( x = Node_X, y = ShiftedLine),
+  #           size = 1, colour = 'gray30')+
+  #annotate("text", x = 33, y = -2, label = "Population\nDensity\n(Log-scale)", 
+  #         hjust = 'left', size = 3)+
   guides( size = FALSE, fill = FALSE)+
   annotate("text", x = 33, y =13.5,
-           label = "Envrionmental\nPerformance\nCurve (a = -0.9)",
-           hjust = 'left', size = 3)+
-  annotate("text", x = 33, y = -2, label = "Population\nDensity\n(Log-scale)", 
+           label = "Environmental\nPerformance\nCurve (a = -0.9)",
            hjust = 'left', size = 3)+
   annotate("label", x = 23, y = 7, label = "Direction of\nMigration")+
   annotate("segment", x = 27, xend = 18, y = 5, yend = 5,
@@ -298,7 +298,7 @@ AllCritCC_df%>%
   geom_smooth(se=FALSE, method = 'glm' , 
               method.args=list(family="binomial"))+
   ylab('Fraction of Species Extant')+
-  xlab('Rate of climate change (v)')+
+  xlab('Rate of Climate Change (v)')+
   geom_hline(yintercept = 0.5)+
   theme_classic()+
   ggtitle( 'i) Critical rate of climate change')+
@@ -330,7 +330,7 @@ Sens_Results_df_processed %>%
   geom_line( data =SimulationEPCs,aes(x=Env,  y= R*10 ), 
              linetype = 'dashed')+
   geom_smooth(aes (col = factor(EPC_MorseA )))+
-  ggtitle( 'iii) Sensitivity to Intervention')+
+  ggtitle( 'iii) Sensitivity to intervention')+
   xlab( 'Relative Location of Intervention\n(L)')+
   scale_colour_viridis_d(name = 'Asymmetry\nparameter')+
   guides(col =FALSE)+
@@ -535,14 +535,14 @@ R_Examples <- data.frame( E = E_vec,
 A<- ggplot( R_Examples,aes(x = E))+
   geom_line(aes(y= Rmod_a1_Lneg2 ), col = 'red')+
   geom_line(aes(y= Rmat_plus1 ))+
-  ylim(-5, 12)+ylab( 'Growth Rate') +theme_minimal() +geom_vline( xintercept = opt) +
+  ylim(-5, 15)+ylab( 'Growth Rate') +theme_minimal() +geom_vline( xintercept = opt) +
   geom_vline( xintercept = opt-2, col = 'red', linetype = 'dashed')
 
 
 B<- ggplot( R_Examples,aes(x = E))+
   geom_line(aes(y= Rmod_a1_L1 ), col = 'red')+
   geom_line(aes(y= Rmat_plus1 ))+
-  ylim(-5, 12)+ylab( 'Growth Rate')+theme_minimal()+
+  ylim(-5, 15)+ylab( 'Growth Rate')+theme_minimal()+
   geom_vline( xintercept = opt) +
   geom_vline( xintercept = opt-0, col = 'red', linetype = 'dashed')
 
@@ -550,7 +550,7 @@ B<- ggplot( R_Examples,aes(x = E))+
 C<- ggplot( R_Examples,aes(x = E))+
   geom_line(aes(y= Rmod_aneg1_Lneg2 ), col = 'red')+
   geom_line(aes(y= Rmat_minus1 ))+
-  ylim(-5, 12)+ylab( 'Growth Rate')+theme_minimal()+
+  ylim(-5, 15)+ylab( 'Growth Rate')+theme_minimal()+
   geom_vline( xintercept = opt) +
   geom_vline( xintercept = opt-1, col = 'red', linetype = 'dashed')
 
@@ -558,7 +558,7 @@ C<- ggplot( R_Examples,aes(x = E))+
 D<- ggplot( R_Examples,aes(x = E))+
   geom_line(aes(y= Rmod_aneg1_L1 ), col = 'red')+
   geom_line(aes(y= Rmat_minus1 ))+
-  ylim(-5, 12)+ylab( 'Growth Rate')+theme_minimal()+
+  ylim(-5, 15)+ylab( 'Growth Rate')+theme_minimal()+
   geom_vline( xintercept = opt) +
   geom_vline( xintercept = opt+0.5, col = 'red', linetype = 'dashed')
 
