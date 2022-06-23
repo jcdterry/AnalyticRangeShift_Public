@@ -483,7 +483,7 @@ D_MorsePosWeather_Plot <-D_MorsePosWeather %>%
   geom_line(size = 1)+
   coord_fixed(ylim = c(-5, 10), xlim = c( -5,5), ratio = 0.5)+
   theme_classic()+
-  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')
+  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('Mean E')+ylab('g(E)')
 
 
 plot_grid(A_Harmonic_Plot, B_MorsePos_Plot,
