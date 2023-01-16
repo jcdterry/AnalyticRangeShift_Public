@@ -3,6 +3,8 @@ title: "3. Plots"
 author: "Chris Terry"
 date: "28/01/2022"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -461,7 +463,8 @@ A_Harmonic_Plot <-           A_Harmonic %>%
   geom_line(size = 1)+
   coord_fixed(ylim = c(-5, 10), xlim = c( -5,5), ratio = 0.5)+
   theme_classic()+
-  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')
+  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')+
+  geom_hline(yintercept = 0, linetype = 'dashed')
 
 
 B_MorsePos_Plot <-   B_MorsePos %>%
@@ -469,21 +472,24 @@ B_MorsePos_Plot <-   B_MorsePos %>%
   geom_line(size = 1)+
   coord_fixed(ylim = c(-5, 10), xlim = c( -5,5), ratio = 0.5)+
   theme_classic()+
-  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')
+  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')+
+  geom_hline(yintercept = 0, linetype = 'dashed')
 
 C_MorseNeg_Plot <-C_MorseNeg %>%
   ggplot( aes( E_vec, R))+
   geom_line(size = 1)+
   coord_fixed(ylim = c(-5, 10), xlim = c( -5,5), ratio = 0.5)+
   theme_classic()+
-  geom_vline(xintercept =0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')
+  geom_vline(xintercept =0, linetype = 'dashed')+ xlab('E')+ylab('g(E)')+
+  geom_hline(yintercept = 0, linetype = 'dashed')
 
 D_MorsePosWeather_Plot <-D_MorsePosWeather %>%
   ggplot( aes( E_vec, R))+
   geom_line(size = 1)+
   coord_fixed(ylim = c(-5, 10), xlim = c( -5,5), ratio = 0.5)+
   theme_classic()+
-  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('Mean E')+ylab('g(E)')
+  geom_vline(xintercept = 0, linetype = 'dashed')+ xlab('Mean E')+ylab('g(E)')+
+  geom_hline(yintercept = 0, linetype = 'dashed')
 
 
 plot_grid(A_Harmonic_Plot, B_MorsePos_Plot,
