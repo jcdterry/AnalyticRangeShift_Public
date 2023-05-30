@@ -2,6 +2,8 @@
 title: "2 Simulation Run"
 author: "Chris Terry"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -34,6 +36,8 @@ Testing two different dispersal rates, but only show one in the results.
 TrialName  = 'Morse'
 
 N_Repeats = 100  # repeats per run parameter combination. 
+
+## Generate dataframe of parameters
 ParamDF_NC <- expand.grid(  Repeat= paste0('R_', 1:N_Repeats),
                             mRate = 1e-7,
                             EPC_MorseA = c( -0.9, 0.9),
@@ -48,7 +52,7 @@ write_csv(ParamDF_NC,'Outputs/ParamDF_NC.csv')  # saving 'run' parameters
 
 ## Running Assembly
 
-Map over each assembly, outputting assembled communities. Takes about 20 seconds per community on an average desktop. 1 example is included. 
+Map the generating function over each paramter combination and repeat to output a list of assembled communities. Takes about 20 seconds per community on an average desktop. 1 example is included. 
 
 
 ```{r eval = FALSE}
@@ -60,6 +64,7 @@ NC_TrialAssm <- map(1:nrow(ParamDF_NC),
 ```
 # Testing Lags
 
+Map the lag measuring function over the assemblies.
 
 ```{r eval = FALSE}
 
@@ -77,6 +82,8 @@ Lags<-map(1:nrow(ParamDF_NC),
 
 # Testing Critical CC Rate
 
+Map the Critical climate change rate function over the assemblies.
+
 ```{r eval = FALSE}
 CritCC<-map(1:nrow(ParamDF_NC),
                         safely(CritCC_Calculator),
@@ -90,6 +97,8 @@ save( CritCC, file = 'Outputs/CritCC')
 
 # Testing Sensitivity to Intervention
 
+
+Map the peak sensitivity identifying function over the assemblies.
 NB only running these with the slower movement rate
 
 ```{r eval = FALSE}
@@ -106,7 +115,6 @@ Sens_CalcResults <-map(1:nrow(ParamDF_NC),
 
 save( Sens_CalcResults, file = 'Outputs/Sens_CalcResults')
 ```
-
 
 # System Information 
 

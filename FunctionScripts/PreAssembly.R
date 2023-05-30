@@ -8,11 +8,13 @@ PreAssembly <- function(i,
   cat(paste('\n Building: _',i,' of ' ,nrow(ParamList), '___ \n'))
   StartTIME<-Sys.time() 
   
-  # loads baseline parameters into sppPool list structure
+  # loads baseline parameters that are constant across the simulations into sppPool list structure
   
   source(ParameterSource, local = TRUE) 
   
   params <- ParamList[i,]
+  
+  ## update variable simulation parameters. 
   sppPool$TempNoise<- params$TempNoise
   sppPool$mRate = params$mRate
   sppPool$EPC_MorseA = params$EPC_MorseA
@@ -21,12 +23,11 @@ PreAssembly <- function(i,
   set.seed(sppPool$g_seed)
   
   #####  Generate networks:
-  
-  sppPool <- genNetwork(sppPool)   # Generate network of nodes
+  sppPool <- genNetwork(sppPool)   # Generate spatial network of nodes
   sppPool <- genDispMat(sppPool)   # Generate dispersal matrix between nodes
-  sppPool$envMat <-   genTempGrad(sppPool)  # // generate temperature gradient
+  sppPool$envMat <-   genTempGrad(sppPool)  #  generate temperature gradient
   
-  sppPool$weather_record <- rnorm(500, mean = 0, sd = sppPool$TempNoise)  
+  sppPool$weather_record <- rnorm(500, mean = 0, sd = sppPool$TempNoise)  # generate a random sequence of temperature anomilies. 
   
   sppPool$CC_rate <- 0 # No CC yet
   
@@ -37,13 +38,13 @@ PreAssembly <- function(i,
   ################################# 
   # 1.1 Community build up
   
-  ## populate system
+  ## Initiate community with set number of species
   sppPool <-PopulateSystem(sppPool, num_species)
   
-    cat('\nRelax: ')
+    cat('\nRelax: ')  
 
   ## allow to expand / relax
-  for(sim_step in 1:length_Relax){
+  for(sim_step in 1:length_Relax){  ## run simulation for a period to reach an approximate balance
     cat(sim_step)
     sppPool<- Run_Step(sppPool)
   }

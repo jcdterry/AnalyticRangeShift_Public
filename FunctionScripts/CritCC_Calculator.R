@@ -34,15 +34,15 @@ CritCC_Calculator <- function(i,
                             NumberNowExtant_0.01=NA,
                             NumberNowExtant_1=NA)
   
-  for( CC_rate_i in 1:length(CC_rates)){
+  for( CC_rate_i in 1:length(CC_rates)){ ## Cycle through different climate change rates
     cat(paste0('\nCC rate: ',  CC_rates[CC_rate_i]  ))
     
-    sppPool <-   StartCC_sppPool 
-    sppPool$CC_rate <- CC_rates[CC_rate_i] 
+    sppPool <-   StartCC_sppPool   ## reset the simulation to the starting assembly
+    sppPool$CC_rate <- CC_rates[CC_rate_i] ## set the CC rate
     
-    for(CC_step in 1:length_CC){
+    for(CC_step in 1:length_CC){  ## step through the timesteps as climate change progresses
       cat('.')
-      sppPool<-Run_Step(sppPool)
+      sppPool<-Run_Step(sppPool)  ## run the simulation one timestep
     }
     ## find indices
    Trackedindicies <-  which( sppPool$p_IDs %in% ToTrack)

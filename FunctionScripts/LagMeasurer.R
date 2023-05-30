@@ -1,13 +1,15 @@
 Lag_Measurer <- function(i,
-                             ParamList,
-                             ParameterSource = 'Parameters/Parameters_Simple.R',
-                             length_assembly = 150,
-                             length_Relax= 50,
-                             length_preCC=50,
-                             length_CC_preTest = 20,
-                             length_CC=30,
-                             CC_rate= 0.1,
-                             PreBuilt=TRUE){
+                         ParamList,
+                         ParameterSource = 'Parameters/Parameters_Simple.R',
+                         length_assembly = 150,
+                         length_Relax= 50,
+                         length_preCC=50,
+                         length_CC_preTest = 20,
+                         length_CC=30,
+                         CC_rate= 0.1,
+                         PreBuilt=TRUE){
+  
+  ## This function examines how species range shifts lag behind the movement of mean temperatures under climate change
   
   
   cat(paste('\n \n Testing: __',i,' of ' ,nrow(ParamList), '___'))
@@ -15,11 +17,11 @@ Lag_Measurer <- function(i,
   
   params <- ParamList[i,]
   
-  ## Load spoPool from previously saved assembly
+  ## Load sppPool from previously saved assembly
   load(paste0('Assemblies/' , params$TrialName, '/sppPool_', params$RunID))
   
-    set.seed(i)
-
+  set.seed(i)
+  
   ##########################
   ## 1. Preparatory Steps
   
@@ -32,7 +34,7 @@ Lag_Measurer <- function(i,
   ########################
   ## 1.2 Assaying pre-CC range limits and average biomasses through time
   
-    ToTrack = sppPool$p_IDs
+  ToTrack = sppPool$p_IDs
   TrackIndex <-  1:length(ToTrack)
   ThermalOptimum =sppPool$tVec
   
@@ -40,10 +42,10 @@ Lag_Measurer <- function(i,
   
   cat('\nPre-CC: ')
   
-  for(PreCC_step in 1:length_preCC){
+  for(PreCC_step in 1:length_preCC){   ## run the simulation for some time to get an intial average range location measure. 
     cat(PreCC_step)
-
-        sppPool<-Run_Step(sppPool)
+    
+    sppPool<-Run_Step(sppPool)
     
     Sp_StillPresent <-  ToTrack[ToTrack %in% sppPool$p_IDs]
     
@@ -57,7 +59,7 @@ Lag_Measurer <- function(i,
       filter( Biomass > sppPool$thresh)%>%        # for  range limits, (those below thresh have minimal influence mid point)
       left_join(NodeList, by = "Node") %>%
       group_by(Species) %>%
-      summarise(Range_Front = min(X),
+      summarise(Range_Front = min(X),   ## metrics of location of range for each of the species. 
                 Range_Rear = max(X),
                 Range_Mid =  weighted.mean(X,Biomass),
                 TotalBiomass = sum(Biomass ),
@@ -89,13 +91,13 @@ Lag_Measurer <- function(i,
   
   cat('\nCC: ')
   
-  ##    sppPool$bMat_p[1,] %>% plot
-
+  ##    sppPool$bMat_p[1,] %>% plot  ## diagnositic
+  
   for(CC_step in 1:length_CC_preTest){
     cat(CC_step)
     sppPool<-Run_Step(sppPool)
     
-  ##  sppPool$bMat_p[1,] %>% points(col = rainbow(length_CC_preTest)[CC_step])
+    ##  sppPool$bMat_p[1,] %>% points(col = rainbow(length_CC_preTest)[CC_step]) ## diagnositic
     
   } 
   
@@ -148,7 +150,7 @@ Lag_Measurer <- function(i,
   DegreesPerX_unit = diff(sppPool$topo$T_range) / sppPool$topo$X_length
   
   PreOuts_DF %>%
-    summarise(InitialXRange = mean(Range_Rear-Range_Front),
+    summarise(InitialXRange = mean(Range_Rear-Range_Front), 
               InitialMid = mean(Range_Mid  ),
               .groups = 'keep' ) -> InitialMids
   
@@ -164,7 +166,7 @@ Lag_Measurer <- function(i,
               SpMeanLag = mean( Lag) ,
               .groups = 'keep') -> SpeciesLags
   
-
+  
   #####################################
   ## Collecting for Final Output
   ##########################################

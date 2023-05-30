@@ -7,7 +7,7 @@ Peak_Sensitivity_Calc <- function(i,
                                   CC_rate  ){
   
   ## Function tests the number of extinct species at each location of climate change
-
+  
   cat(paste('\n Testing: _',i,' of ' ,nrow(ParamList), '___ \n'))
   StartTIME<-Sys.time() 
   
@@ -57,12 +57,12 @@ Peak_Sensitivity_Calc <- function(i,
   #########################
   ## 4. repeat with different locations for intervention
   
-  for( Location_i in 1:length(Locs_to_test)){
+  for( Location_i in 1:length(Locs_to_test)){  ## cycle through each of the locations to test
     Location <- Locs_to_test[Location_i]
     cat(paste0('\nLocation: ',  Location_i  ))
     sppPool <-   StartCC_sppPool 
     
-    for(CC_step in 1:length_CC){
+    for(CC_step in 1:length_CC){   ## running a small amount of climate change
       cat('.')
       #### opening up 'Run_Step()' function to allow conservation intervention
       sppPool$SimIter = sppPool$SimIter +1
